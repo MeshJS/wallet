@@ -2,7 +2,7 @@
 
 `mesh-wallet` is a package whose primary usage will be to allow dapps to sign transactions and messages from a private key or mnemonic.
 
-It has an extended functionality to allow for a simulation of CIP-30 endpoints using a Cardano data provider such as Blockfrost/Maestro.
+It has an extended functionality to allow for a simulation of [CIP-30](https://cips.cardano.org/cip/CIP-30) endpoints using a Cardano data provider such as Blockfrost/Maestro.
 
 NOTE: These are not a perfect replication of CIP-30 endpoints, CIP-30 requires a dedicated node and indexer realistically. The wallet therefore does not do any key derivations, and will only by default, derive keys for index 0 on all related derivation paths (payment, stake, drep).
 
@@ -117,3 +117,13 @@ const wallet = await MeshWallet.fromCredentialSources({
   },
 });
 ```
+
+## BaseCardanoWallet vs MeshWallet
+
+The `BaseCardanoWallet` class acts as the underlying CIP-30 compatible wallet implementation. It attempts to adhere to the available APIs and return types defined in CIP-30.
+
+However, due to our experiences with Cardano development, the return types defined in CIP-30 are all in a very inconvenient format. Everything is returned in CBOR hex format, which is not very useful in its raw format, and generally has to be parsed using a serialization library to obtain it in a more readily consumable format.
+
+`MeshWallet` is an attempt to extend the `BaseCardanoWallet` in such a way that there are extra endpoints that do this parsing of the CBOR hex returns in a more readibly consumable way.
+
+Probably the most relevant of these APIs would be the difference between `signTx` and `signTxReturnFullTx`. As the name of the API suggests, `signTxReturnFullTx` returns the transaction in FULL, with the extra vkey witnesses placed into the witness set. While `signTx` returns the signatures serialized in a transaction witness set, which requires extra manipulation using a serialization library to place the signatures in the transaction's witness set before it can be submitted.
