@@ -197,6 +197,8 @@ export class BaseCardanoWallet implements ICardanoWallet {
    * stateless and does not track which UTxOs are specifically set as collateral. Which means that there
    * will be overlap between getUtxos() and getCollateral() results. This can result in the collateral being
    * spent between transactions.
+   *
+   * The method also does not perform pagination, nor is there a coin selection mechanism.
    * @returns {Promise<string[]>} A promise that resolves to an array of UTxOs in CBOR hex format
    */
   async getUtxos(): Promise<string[]> {
