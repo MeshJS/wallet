@@ -56,6 +56,9 @@ export class CardanoBrowserWallet implements ICardanoWallet {
   async getUnusedAddresses(): Promise<string[]> {
     return this.walletInstance.getUnusedAddresses();
   }
+  async getRewardAddresses(): Promise<string[]> {
+    return this.walletInstance.getRewardAddresses();
+  }
   async getChangeAddress(): Promise<string> {
     return this.walletInstance.getChangeAddress();
   }

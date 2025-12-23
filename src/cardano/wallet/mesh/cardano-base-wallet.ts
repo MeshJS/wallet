@@ -322,11 +322,12 @@ export class BaseCardanoWallet implements ICardanoWallet {
 
   /**
    * Get the reward address for the wallet.
-   * @returns {Promise<string>} A promise that resolves to the reward address in hex format
+   *
+   * @returns {Promise<string[]>} A promise that resolves an array of reward addresses in hex format
    */
-  async getRewardAddress(): Promise<string> {
+  async getRewardAddresses(): Promise<string[]> {
     const rewardAddress = await this.addressManager.getRewardAccount();
-    return rewardAddress.getAddressHex();
+    return [rewardAddress.getAddressHex()];
   }
 
   /**

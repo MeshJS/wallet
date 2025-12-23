@@ -7,6 +7,7 @@ export interface ICardanoWallet {
   getBalance(): Promise<string>;
   getUsedAddresses(): Promise<string[]>;
   getUnusedAddresses(): Promise<string[]>;
+  getRewardAddresses(): Promise<string[]>;
   getChangeAddress(): Promise<string>;
   signTx(data: string, partialSign: boolean): Promise<string>;
   signData(addressHex: string, data: string): Promise<DataSignature>;
