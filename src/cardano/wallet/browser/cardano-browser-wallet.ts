@@ -8,12 +8,6 @@ type Wallet = {
   version: string;
 };
 
-declare global {
-  interface Window {
-    cardano: Cardano;
-  }
-}
-
 export type Cardano = {
   [key: string]: {
     name: string;
@@ -65,8 +59,8 @@ export class CardanoBrowserWallet implements ICardanoWallet {
   async signTx(data: string, partialSign: boolean): Promise<string> {
     return this.walletInstance.signTx(data, partialSign);
   }
-  async signData(addressHex: string, data: string): Promise<DataSignature> {
-    return this.walletInstance.signData(addressHex, data);
+  async signData(addressBech32: string, data: string): Promise<DataSignature> {
+    return this.walletInstance.signData(addressBech32, data);
   }
   async submitTx(tx: string): Promise<string> {
     return this.walletInstance.submitTx(tx);
@@ -81,13 +75,13 @@ export class CardanoBrowserWallet implements ICardanoWallet {
    * @returns a list of wallet names
    */
   static getInstalledWallets(): Wallet[] {
-    if (window === undefined) return [];
-    if (window.cardano === undefined) return [];
+    if (globalThis === undefined) return [];
+    if (globalThis.cardano === undefined) return [];
 
     let wallets: Wallet[] = [];
-    for (const key in window.cardano) {
+    for (const key in globalThis.cardano) {
       try {
-        const _wallet = window.cardano[key];
+        const _wallet = globalThis.cardano[key];
         if (_wallet === undefined) continue;
         if (_wallet.name === undefined) continue;
         if (_wallet.icon === undefined) continue;
@@ -120,10 +114,10 @@ export class CardanoBrowserWallet implements ICardanoWallet {
     try {
       const walletInstance =
         extensions.length > 0
-          ? await window.cardano[walletName].enable({
+          ? await globalThis.cardano[walletName].enable({
               extensions: extensions,
             })
-          : await window.cardano[walletName].enable();
+          : await globalThis.cardano[walletName].enable();
 
       if (walletInstance !== undefined)
         return new CardanoBrowserWallet(walletInstance, walletName);
