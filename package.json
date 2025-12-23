@@ -19,6 +19,9 @@
   ],
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --dts",
+    "build:demo": "tsup demo/src/main.ts --format esm --outDir demo/dist --clean",
+    "dev:demo": "tsup demo/src/main.ts --format esm --outDir demo/dist --watch",
+    "preview:demo": "npx serve demo -p 5173",
     "build:docs": "typedoc src/index.ts --json ../../apps/docs/src/data/mesh-wallets.json",
     "clean": "rm -rf .turbo && rm -rf dist && rm -rf node_modules",
     "dev": "tsup src/index.ts --format esm,cjs --watch --dts",
@@ -37,16 +40,15 @@
     "@types/jest": "^29.5.12",
     "ts-node": "^10.9.2",
     "ts-jest": "^29.1.4",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.5",
+    "@meshsdk/provider": "1.9.0-beta.90",
+    "@meshsdk/common": "1.9.0-beta.90"
   },
   "dependencies": {
-    "@cardano-sdk/core": "0.46.10",
+    "@cardano-sdk/core": "0.46.11",
     "@cardano-sdk/crypto": "0.4.4",
     "@cardano-sdk/util": "0.17.1",
     "@harmoniclabs/cbor": "^1.6.6",
-    "@meshsdk/core-cst": "1.9.0-beta.87",
-    "@meshsdk/provider": "1.9.0-beta.87",
-    "@meshsdk/common": "1.9.0-beta.87",
     "json-bigint": "^1.0.0",
     "@simplewebauthn/browser": "^13.0.0",
     "@types/base32-encoding": "^1.0.2",
