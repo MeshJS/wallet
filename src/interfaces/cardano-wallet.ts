@@ -1,15 +1,14 @@
 import { DataSignature } from "@meshsdk/common";
 
 export interface ICardanoWallet {
-  getNetworkId(): number;
+  getNetworkId(): Promise<number>;
   getUtxos(): Promise<string[]>;
   getCollateral(): Promise<string[]>;
   getBalance(): Promise<string>;
   getUsedAddresses(): Promise<string[]>;
   getUnusedAddresses(): Promise<string[]>;
   getChangeAddress(): Promise<string>;
-  getRewardAddress(): Promise<string>;
   signTx(data: string): Promise<string>;
-  signData(data: string): Promise<DataSignature>;
+  signData(addressHex: string, data: string): Promise<DataSignature>;
   submitTx(tx: string): Promise<string>;
 }

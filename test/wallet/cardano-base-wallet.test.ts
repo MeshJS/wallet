@@ -7,6 +7,7 @@ import { OfflineFetcher } from "@meshsdk/provider";
 import { InMemoryBip32 } from "../../src";
 import { AddressType } from "../../src/cardano/address/cardano-address";
 import { BaseCardanoWallet } from "../../src/cardano/wallet/mesh/cardano-base-wallet";
+import { MeshWallet } from "../../src/cardano/wallet/mesh/mesh-wallet";
 import { BaseSigner } from "../../src/signer/base-signer";
 
 describe("CardanoBaseWallet", () => {
@@ -319,16 +320,16 @@ describe("CardanoBaseWallet", () => {
   });
 
   it("should sign data correctly", async () => {
-    const wallet = await BaseCardanoWallet.fromMnemonic({
+    const wallet = await MeshWallet.fromMnemonic({
       mnemonic: "solution,".repeat(24).split(",").slice(0, 24),
       networkId: 0,
       walletAddressType: AddressType.Base,
       fetcher: offlineFetcher,
     });
 
-    const addressHex = await wallet.getChangeAddress();
+    const addressBech32 = await wallet.getChangeAddressBech32();
 
-    const signedData = await wallet.signData("abc", addressHex);
+    const signedData = await wallet.signData(addressBech32, "abc");
     expect(signedData).toEqual<DataSignature>({
       key: "a4010103272006215820c32dfdb461dd016e8fdd9b6d424a77439eab8f8c644a804b013b6cefa2454f95",
       signature:
