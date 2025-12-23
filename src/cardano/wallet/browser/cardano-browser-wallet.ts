@@ -59,8 +59,8 @@ export class CardanoBrowserWallet implements ICardanoWallet {
   async getChangeAddress(): Promise<string> {
     return this.walletInstance.getChangeAddress();
   }
-  async signTx(data: string): Promise<string> {
-    return this.walletInstance.signTx(data);
+  async signTx(data: string, partialSign: boolean): Promise<string> {
+    return this.walletInstance.signTx(data, partialSign);
   }
   async signData(addressHex: string, data: string): Promise<DataSignature> {
     return this.walletInstance.signData(addressHex, data);
