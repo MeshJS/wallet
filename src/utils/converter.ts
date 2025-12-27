@@ -42,7 +42,7 @@ export const fromTxUnspentOutput = (
   txUnspentOutput: Serialization.TransactionUnspentOutput
 ): UTxO => {
   const dataHash = txUnspentOutput.output().datum()
-    ? txUnspentOutput.output().datum()?.toCbor().toString()
+    ? txUnspentOutput.output().datum()?.asDataHash()?.toString()
     : undefined;
 
   const scriptRef = txUnspentOutput.output().scriptRef()
