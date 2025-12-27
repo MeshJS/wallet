@@ -27,7 +27,7 @@ export class CardanoAddress {
     addressType: AddressType,
     networkId: number,
     paymentCredential: Credential,
-    stakeCredential?: Credential,
+    stakeCredential?: Credential
   ) {
     setInConwayEra(true);
     if (addressType === AddressType.Base && !stakeCredential) {
@@ -69,7 +69,7 @@ export class CardanoAddress {
       {
         hash: Hash28ByteBase16(this.paymentCredential.hash),
         type: mapCredentialTypeToCredential(this.paymentCredential.type),
-      },
+      }
     );
     return enterpriseAddress.toAddress().toBech32();
   }
@@ -82,7 +82,7 @@ export class CardanoAddress {
       {
         hash: Hash28ByteBase16(this.paymentCredential.hash),
         type: mapCredentialTypeToCredential(this.paymentCredential.type),
-      },
+      }
     );
     return enterpriseAddress.toAddress().toBytes();
   }
@@ -100,7 +100,7 @@ export class CardanoAddress {
       {
         hash: Hash28ByteBase16(this.stakeCredential.hash),
         type: mapCredentialTypeToCredential(this.stakeCredential.type),
-      },
+      }
     );
     return baseAddress.toAddress().toBech32();
   }
@@ -118,7 +118,7 @@ export class CardanoAddress {
       {
         hash: Hash28ByteBase16(this.stakeCredential.hash),
         type: this.stakeCredential.type,
-      },
+      }
     );
     return baseAddress.toAddress().toBytes();
   }
@@ -130,9 +130,9 @@ export class CardanoAddress {
         ? Cardano.NetworkId.Mainnet
         : Cardano.NetworkId.Testnet,
       {
-        hash: Hash28ByteBase16(this.paymentCredential.hash),
-        type: this.paymentCredential.type,
-      },
+        hash: Hash28ByteBase16(this.stakeCredential.hash),
+        type: this.stakeCredential.type,
+      }
     );
     return rewardAddress.toAddress().toBech32();
   }
@@ -144,16 +144,16 @@ export class CardanoAddress {
         ? Cardano.NetworkId.Mainnet
         : Cardano.NetworkId.Testnet,
       {
-        hash: Hash28ByteBase16(this.paymentCredential.hash),
-        type: mapCredentialTypeToCredential(this.paymentCredential.type),
-      },
+        hash: Hash28ByteBase16(this.stakeCredential.hash),
+        type: this.stakeCredential.type,
+      }
     );
     return rewardAddress.toAddress().toBytes();
   }
 }
 
 const mapCredentialTypeToCredential = (
-  credentialType: CredentialType,
+  credentialType: CredentialType
 ): Cardano.CredentialType => {
   switch (credentialType) {
     case CredentialType.KeyHash:
