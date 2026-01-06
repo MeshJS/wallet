@@ -182,7 +182,7 @@ const signature = await browserWallet.signTx(transactionHex, true);
 `mesh-wallet` also provides a wrapper class around `CardanoBrowserWallet` called `MeshBrowserWallet` that implements all the convenient return types that might be easier to consume immediately.
 
 ```typescript
-const meshBrowserWallet = new MeshBrowserWallet(browserWallet);
+const meshBrowserWallet = await MeshBrowserWallet.enable("eternl");
 
 const browserBalance = await meshBrowserWallet.getBalanceMesh();
 const browserChangeAddress = await meshBrowserWallet.getChangeAddressBech32();

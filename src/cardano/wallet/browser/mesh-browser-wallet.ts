@@ -1,4 +1,4 @@
-import { Asset, UTxO } from "@meshsdk/common";
+import { Asset, Extension, UTxO } from "@meshsdk/common";
 import { ICardanoWallet } from "../../../interfaces/cardano-wallet";
 import { CardanoBrowserWallet } from "./cardano-browser-wallet";
 import { Serialization, Cardano } from "@cardano-sdk/core";
@@ -8,6 +8,14 @@ import { fromTxUnspentOutput, fromValue } from "../../../utils/converter";
 export class MeshBrowserWallet extends CardanoBrowserWallet {
   constructor(walletInstance: ICardanoWallet) {
     super(walletInstance);
+  }
+
+  static async enable(
+    walletName: string,
+    extensions: Extension[] = []
+  ): Promise<MeshBrowserWallet> {
+    const walletInstance = await super.enable(walletName, extensions);
+    return new MeshBrowserWallet(walletInstance);
   }
 
   async getUtxosMesh(): Promise<UTxO[]> {
