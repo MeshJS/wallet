@@ -364,6 +364,24 @@ describe("CIP-30 endpoints", () => {
     ).toBeGreaterThan(0);
   });
 
+  it("Wallet utxos test", async () => {
+    const browserUtxos = await browserWallet.getUtxos();
+    const meshWalletUtxos = await meshWallet.getUtxos();
+    // There are going to be differences in UTxOs, due to address resolution
+    // It is not possible for Mesh Wallet to find all addresses especially if they use different
+    // staking keys. So we just check if the UTxOs can be deserialized correctly.
+    expect(
+      browserUtxos.map((u) =>
+        Serialization.TransactionUnspentOutput.fromCbor(u)
+      ).length
+    ).toBeGreaterThan(0);
+    expect(
+      meshWalletUtxos.map((u) =>
+        Serialization.TransactionUnspentOutput.fromCbor(u)
+      ).length
+    ).toBeGreaterThan(0);
+  });
+
   it("Wallet network id test", async () => {
     const browserNetworkId = await browserWallet.getNetworkId();
     const meshWalletNetworkId = await meshWallet.getNetworkId();

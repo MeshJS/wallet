@@ -127,3 +127,52 @@ However, due to our experiences with Cardano development, the return types defin
 `MeshWallet` is an attempt to extend the `BaseCardanoWallet` in such a way that there are extra endpoints that do this parsing of the CBOR hex returns in a more readibly consumable way.
 
 Probably the most relevant of these APIs would be the difference between `signTx` and `signTxReturnFullTx`. As the name of the API suggests, `signTxReturnFullTx` returns the transaction in FULL, with the extra vkey witnesses placed into the witness set. While `signTx` returns the signatures serialized in a transaction witness set, which requires extra manipulation using a serialization library to place the signatures in the transaction's witness set before it can be submitted.
+
+## CIP-30
+
+Once a MeshWallet is set up, it is possible to use it as an instance of a CIP-30 wallet.
+
+```typescript
+const meshWallet = await MeshWallet.fromMnemonic({
+  networkId: 0,
+  walletAddressType: AddressType.Base,
+  mnemonic: mnemonic,
+  fetcher: fetcher,
+});
+
+const meshWalletBalance = await meshWallet.getBalance();
+const meshWalletChangeAddress = await meshWallet.getChangeAddress();
+const meshWalletNetworkId = await meshWallet.getNetworkId();
+const meshWalletCollateral = await meshWallet.getCollateral();
+const meshWalletUtxos = await meshWallet.getUtxos();
+const meshWalletRewardAddresses = await meshWallet.getRewardAddresses();
+
+const meshWalletsignedData = await meshWallet.signData(
+  meshWalletChangeAddress,
+  "abc"
+);
+const signature = await meshWallet.signTx(transactionHex, true);
+```
+
+## Browser Wallet
+
+`mesh-wallet` provides a class that helps with setting up Cardano Browser wallets.
+
+Once enabled, the wallet object can be used the same way as a MeshWallet.
+
+```typescript
+const browserWallet = await MeshBrowserWallet.enable("eternl");
+
+const browserBalance = await browserWallet.getBalance();
+const browserChangeAddress = await browserWallet.getChangeAddress();
+const browserCollateral = await browserWallet.getCollateral();
+const browserUtxos = await browserWallet.getUtxos();
+const browserNetworkId = await browserWallet.getNetworkId();
+const browserRewardAddresses = await browserWallet.getRewardAddresses();
+
+const browserSignedData = await browserWallet.signData(
+  meshWalletChangeAddress,
+  "abc"
+);
+const signature = await browserWallet.signTx(transactionHex, true);
+```
