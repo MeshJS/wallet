@@ -6,8 +6,8 @@ import { HexBlob } from "@cardano-sdk/util";
 import { fromTxUnspentOutput, fromValue } from "../../../utils/converter";
 
 export class MeshBrowserWallet extends CardanoBrowserWallet {
-  constructor(walletInstance: ICardanoWallet, walletName: string) {
-    super(walletInstance, walletName);
+  constructor(walletInstance: ICardanoWallet) {
+    super(walletInstance);
   }
 
   async getUtxosMesh(): Promise<UTxO[]> {
@@ -54,6 +54,15 @@ export class MeshBrowserWallet extends CardanoBrowserWallet {
     const addressHex = await this.getChangeAddress();
     const cardanoAddr = Cardano.Address.fromBytes(HexBlob(addressHex));
     return cardanoAddr.toBech32();
+  }
+
+  async getRewardAddressesBech32(): Promise<string[]> {
+    const addresses = await this.getRewardAddresses();
+
+    return addresses.map((addr) => {
+      const cardanoAddr = Cardano.Address.fromBytes(HexBlob(addr));
+      return cardanoAddr.toBech32();
+    });
   }
 
   async signTxReturnFullTx(

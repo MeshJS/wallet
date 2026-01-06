@@ -161,7 +161,7 @@ const signature = await meshWallet.signTx(transactionHex, true);
 Once enabled, the wallet object can be used the same way as a MeshWallet.
 
 ```typescript
-const browserWallet = await MeshBrowserWallet.enable("eternl");
+const browserWallet = await CardanoBrowserWallet.enable("eternl");
 
 const browserBalance = await browserWallet.getBalance();
 const browserChangeAddress = await browserWallet.getChangeAddress();
@@ -175,4 +175,25 @@ const browserSignedData = await browserWallet.signData(
   "abc"
 );
 const signature = await browserWallet.signTx(transactionHex, true);
+```
+
+## Mesh Browser Wallet
+
+`mesh-wallet` also provides a wrapper class around `CardanoBrowserWallet` called `MeshBrowserWallet` that implements all the convenient return types that might be easier to consume immediately.
+
+```typescript
+const meshBrowserWallet = new MeshBrowserWallet(browserWallet);
+
+const browserBalance = await meshBrowserWallet.getBalanceMesh();
+const browserChangeAddress = await meshBrowserWallet.getChangeAddressBech32();
+const browserCollateral = await meshBrowserWallet.getCollateralMesh();
+const browserUtxos = await meshBrowserWallet.getUtxosMesh();
+const browserNetworkId = await meshBrowserWallet.getNetworkId();
+const browserRewardAddresses =
+  await meshBrowserWallet.getRewardAddressesBech32();
+
+const signedTx = await meshBrowserWallet.signTxReturnFullTx(
+  transactionHex,
+  true
+);
 ```

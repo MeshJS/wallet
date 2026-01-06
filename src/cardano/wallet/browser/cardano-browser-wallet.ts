@@ -26,11 +26,9 @@ type Extension = {
 
 export class CardanoBrowserWallet implements ICardanoWallet {
   walletInstance: ICardanoWallet;
-  walletName: string;
 
-  constructor(walletInstance: ICardanoWallet, walletName: string) {
+  constructor(walletInstance: ICardanoWallet) {
     this.walletInstance = walletInstance;
-    this.walletName = walletName;
   }
   async getNetworkId(): Promise<number> {
     return this.walletInstance.getNetworkId();
@@ -120,7 +118,7 @@ export class CardanoBrowserWallet implements ICardanoWallet {
           : await globalThis.cardano[walletName].enable();
 
       if (walletInstance !== undefined)
-        return new CardanoBrowserWallet(walletInstance, walletName);
+        return new CardanoBrowserWallet(walletInstance);
 
       throw new Error(`Couldn't create an instance of wallet: ${walletName}`);
     } catch (error) {

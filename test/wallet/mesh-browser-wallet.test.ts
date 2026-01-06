@@ -1,82 +1,16 @@
 import { OfflineFetcher } from "@meshsdk/provider";
 import { MeshBrowserWallet } from "../../src/cardano/wallet/browser/mesh-browser-wallet";
-import { MeshWallet } from "../../src/cardano/wallet/mesh/mesh-wallet";
-import { AddressType } from "../../src";
 import { fromTxUnspentOutput } from "../../src/utils/converter";
 import { Serialization } from "@cardano-sdk/core";
-import { ICardanoWallet } from "../../src/interfaces/cardano-wallet";
 import { CardanoBrowserWallet } from "../../src/cardano/wallet/browser/cardano-browser-wallet";
 
 describe("CIP-30 endpoints", () => {
-  let browserWallet: ICardanoWallet;
-  let meshWallet: MeshWallet;
+  let meshBrowserWallet: MeshBrowserWallet;
   const offlineFetcher = new OfflineFetcher();
 
   const utxosHex = [
     "828258202e20c10271bfcb5eac7ca90f0f66981042b66ffe088ec2e74d2244dacf1680c00082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f821a000ffb22a1581cd213852f90d323b1240774b96a653945ba0152213ff43a51fbd6162aa14b4d657368546f6b656e303101",
     "828258206971384d6636b9258bb0f507201427cc6b7690d60a5eba11cca90359a18afe9e0082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a00124f80",
-    "82825820bd75ec5d278ad18c4836e0af44f60dc40dfc6586f795fc35377a295b231f98360082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f821a000ffb22a1581c0648e3795e3402c4f93ffd7e76d7741a7e449ae1a769c0297b798813a14b4d657368546f6b656e303101",
-    "828258205041783b49211cdd034329c7d7e98d9a42255a40044d06b14f7d5dd6716926a20082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f821a000ffb22a1581c0648e3795e3402c4f93ffd7e76d7741a7e449ae1a769c0297b798813a14b4d657368546f6b656e303101",
-    "8282582017b7487d099b8ce539212d37776e5fdf4a946dd8b65be8b26fc556be9df993060082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f821a000ffb22a1581c0648e3795e3402c4f93ffd7e76d7741a7e449ae1a769c0297b798813a14b4d657368546f6b656e303101",
-    "828258209bf0acf7efafc53cf9b4f83fde82fbb5dd3332c08326fd40e4ae238bcdfa3a210082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f821a000ffb22a1581c418f4cdc47b56879028737b4c19a648a3e72776b3ff6edf6563aaac9a14b4d657368546f6b656e303101",
-    "8282582060542fd302908d8f84b90594103e5b55ff23f97b9cab1147c850e56bb00048e40082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f821a000ffb22a1581c418f4cdc47b56879028737b4c19a648a3e72776b3ff6edf6563aaac9a14b4d657368546f6b656e303101",
-    "8282582043f77a55e3adb3741e027e43d27800a5e61bd959c9936dc97fe492a722a8dc0c0082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a000f4240",
-    "828258200a61ee1efd7014ab2b2798354a49952a89b995d5086a2a3cc3b92bd830faad0a00a300581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f011a000e77e803d8185182014e4d01000033222220051200120011",
-    "82825820064e8938f52386305203a166ffc284d812d815bd346f20b763c940810d81bf4e0082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a000f4240",
-    "82825820225d57e927a40b626d7ff0a5cb7bbcda5aeb77aa3a81feebeae45d6c280491ab0082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a000f4240",
-    "82825820f6b6d4fd9a76137eb8510c46297c38e96cacdbce7e50156e0583702fa9b903f80082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a000f4240",
-    "82825820f6b6d4fd9a76137eb8510c46297c38e96cacdbce7e50156e0583702fa9b903f80182581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a0016e360",
-    "828258206454ea251241e5f31ad6a611a69625c68f29c635558cf8482b3f465bd3777f5a0082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a000f4240",
-    "828258206454ea251241e5f31ad6a611a69625c68f29c635558cf8482b3f465bd3777f5a0182581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a0016e360",
-    "82825820deb47a53c1705261bf21bcfe840dfe3acb833349570243a4b06218ccc55e151a0082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a000f4240",
-    "828258205f006eb8590ba882afadafc1a17a505bdad9ede2081231261d8dd1840779f9620082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a000f4240",
-    "82825820ecbec9bacf76f7cd82da6104c512363ec30ec71de1b02ad411a251945740c4040082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a000f4240",
-    "82825820217a9ccdd9bdf516317a8d10d9844f18243c8ae95e0c378fc5de30c777d0176f0082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a000f4240",
-    "828258200d1846efafc35fb1f6040b354d51de5448b1084b22dc5ee40fd49a63304776630082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a000f4240",
-    "82825820fd049ede61bcfdfaa368873c0fe763b5ad0a1b46ded832824f52a58f0f4e21a200a300581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f011a000e77e803d8185182014e4d01000033222220051200120011",
-    "82825820ff75de215ec3adbc3007e877bbce5e9936bfcb16112c5cbc58111dfd0c5a73a50082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a004c4b40",
-    "82825820abac94585f9e71cf8ecede1d6e7aa5fc62c1c14a1f3c3e5f6d8d25a6ba9eb4da0082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f821a000ffb22a1581cce5a4e6ea5819e96581a4b5680a4a5f94dec4337beade12e3851d01ca14b4d657368546f6b656e303101",
-    "82825820a9ed3f808294ba41ea7db6fa00d61abc9380abe338352125e6cec73f4c60b84d0082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f821a000ffb22a1581cce5a4e6ea5819e96581a4b5680a4a5f94dec4337beade12e3851d01ca14b4d657368546f6b656e303101",
-    "828258200c37741607af63062e2bbd6a1b992e094c90cd8e0eb01b809bb210e1bc177d190082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f821a000ffb22a1581c0c5d5669f4b2c0c7be0dc771b387c4f2b55396d8b47701f82476e930a14b4d657368546f6b656e303101",
-    "828258204645f79da0ea1676d79f9f43a2a45abd3b9931ba0532cb207df3183492c4e7ac0082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f821a000ffb22a1581c2ae6f72c24d6e8866318b5d8512a7d6bd71f48421bfd5965aa6e8ea1a14b4d657368546f6b656e303101",
-    "8282582020139ea6cc477b521a7486c1b5880082bb6824c35dfd45460a40b875283bc4bd0082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f821a000ffb22a1581c0c5d5669f4b2c0c7be0dc771b387c4f2b55396d8b47701f82476e930a14b4d657368546f6b656e303101",
-    "82825820d0e6eb766b2e4fcbc3333dc4bf8cb4dfad173631ea1e2b59a8a3a0d0ae56f6c90082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a004c4b40",
-    "8282582088bd5167c1481a74a92e36617c191aad39ad42406b39efc9316d8978e8efc39a0082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a004c4b40",
-    "82825820cf3c03aa4b3f5bf569db6f420b92076ca098076e60bb0a61b18fdf6a622d58be0082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a004c4b40",
-    "828258207cb1c4af1f3e727f7584b42ff08f2270046d1dc2d40c6830bfb446a2881869620082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a05397f9c",
-    "828258209e23612eba029f1394011c8ca85fa39682cacaa6f386bb768091777c4f394e6e0082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a05397f9c",
-    "82825820c0ba7f70dd62ddb3bd93211b65a684018e9bd050c781beb98fc4e776b60f200a0082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a05e30a76",
-    "82825820f3014418ae4076223b10e4c12ced469f3fc514f8d7b6e7ef8dd6812314ec65da0082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a05e30a76",
-    "828258208a6d5f398fc8b4da87a654ff59fce8ca4cc669c2f6dbd3ad45b0808798b052f70082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a05e30a76",
-    "82825820d607e51851c384b0cb899bb53c53690a14ad958e25144c5c863d91d77693fea60082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a05e30a76",
-    "82825820b6e583721ac6d1a2484daa0d57bde36ee6b4cdb4d21849b987a7723d1ca66f970082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a000f4240",
-    "82825820a5a3985750c4e67d73d35dad5c6a0a7f4ac1ff2f71c73d27c416d6c3f19e97510082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a05e30a76",
-    "82825820fe85919005f3118860793c4a09667c70ab2feafab378af7806c681929660ce1e0082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a05e30a76",
-    "82825820b509ded63db9be1e7fcbf013f501ea78ecba7a029b8b706f026e525e65b9a5ae0082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a05e30a76",
-    "8282582016773778457e9a16f939dc6a9e8b6f85982764ac56962fa9614cc291f735f9c70082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a05e30a76",
-    "828258205c921cf900cff17f0834f3b04b6e5e2164d4cfe75220ec76375e32cbf81dbaf10082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a05e30a76",
-    "82825820f7926384f0496c005554914898fe8e6653e0154e65725fdaa490a6b6f8e01f4f0082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a05e30a76",
-    "828258204c9b37771b18dc9831a8227fc78effd1ff53d8240b2ac86931f87f2d57e0316e0082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a05e30a76",
-    "82825820f76dd8286ba95a1fd4b6112dc848a8a6c72d92597154e0c8a524fb66d94d83440082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a05e30a76",
-    "828258205fa23d2ca18f153787b2bb9969cf90eb425a25c08127dd8b0a57826b9e64c39d0082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f821a00101ccea1581cb8df5676f026a61bc6435621df48217b3e652ea63f34e15113cbc456a14d546f6b656e303133323432333401",
-    "8282582042085f403afab1aeda3ec0649904b7e5ed3156bca340bbdfbf23fe587c95479c0082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f821a00101ccea1581cb8df5676f026a61bc6435621df48217b3e652ea63f34e15113cbc456a14d546f6b656e303133323432333401",
-    "82825820a6cf10b99f5a2f39887c6c94f24d9d4100177696bbdc5d534692c12c14bd4ad10082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a02160ec0",
-    "82825820362205001b0aa386df270609012dad6a49ecee39a4a6656ada88c96d5af836cf0082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f821a000ffb22a1581cc1d3d06522380d6380ec3e52ec6dfd96f0ce8005bb14df811455d20fa14b4d657368546f6b656e303101",
-    "8282582051e20a38a7b188069973c637d0eff8898ea6ed275984fac383d1554ba0f2bcb20082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f821a000ffb22a1581cc1d3d06522380d6380ec3e52ec6dfd96f0ce8005bb14df811455d20fa14b4d657368546f6b656e303101",
-    "828258200fd8080bd418b5f0c4da4669b83b0898e498bfb3ddc2e9699dcf7dfc28a167c70282581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a001e8480",
-    "828258200900907bb0426758661261551af24d588e1a13f78531c0e09b4f8f033adb34440282581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a001e8480",
-    "828258201bdcc6e0058bd1a3653e5ad6a0c2dbf71582dc7e00b94523c72049d0c2356b5a0282581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a001e8480",
-    "828258205f1e327288370fec4681488dd9f74c8d6f7ef01a8af829f84ae09452b24ee5d90382581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a06cb8080",
-    "828258200a353321dce30bb0bf16f260f7b55939b0f7e302ea305893ecef1de5ff588a090082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a000f4240",
-    "828258204aebc8acad77c735d62d591052f1a990ba0b8e185d49f1e2eb5c360fe37c88c80082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a000f4240",
-    "8282582018d845e0fd27add92895767ccf9ae88e4bb8d259c028ae53e7844b892aa096ed0082581d605867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f1a000f4240",
-    "82825820ba9256e839b0df727436d46265758fcc2637a7b70de9e626da4c68194067f3e801825839005867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f9d4dcd7e454d2434164f4efb8edeb358d86a1dad9ec6224cfcbce3e61a04eebda6",
-    "82825820ba9256e839b0df727436d46265758fcc2637a7b70de9e626da4c68194067f3e802825839005867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f9d4dcd7e454d2434164f4efb8edeb358d86a1dad9ec6224cfcbce3e6821a00317142a3581cc69b981db7a65e339a6d783755f85a2e03afa1cece9714c55fe4c913a1445553444d1b00000004a80885c0581cd213852f90d323b1240774b96a653945ba0152213ff43a51fbd6162aa14b4d657368546f6b656e303102581cd9312da562da182b02322fd8acb536f37eb9d29fba7c49dc17255527a1494d657368546f6b656e01",
-    "828258208ffeaef12d3c6c249eddd8583a81690bffddd96f90efb5263c13ebfe0eb733a302825839005867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f9d4dcd7e454d2434164f4efb8edeb358d86a1dad9ec6224cfcbce3e6821a00488aaaa9581c0648e3795e3402c4f93ffd7e76d7741a7e449ae1a769c0297b798813a14b4d657368546f6b656e303303581c0ba402c042775dfffedbd958cae3805a281bad34f46b5b6fd5c2c771a1494d657368546f6b656e01581c418f4cdc47b56879028737b4c19a648a3e72776b3ff6edf6563aaac9a14b4d657368546f6b656e303302581c839680d91609accded1eca1dcfd2bd715b45ebe052321f52727ea091a1494d657368546f6b656e01581c974966e3b5f81f3bf32054c09bd4bae7f123d674eb3958925e5b3377a1496d657368202831302901581cc69b981db7a65e339a6d783755f85a2e03afa1cece9714c55fe4c913a1445553444d1b00000002540be400581cc76c35088ac826c8a0e6947c8ff78d8d4495789bc729419b3a334305a2493232322e6b756e7a61014a3232326a696e676c657301581cd213852f90d323b1240774b96a653945ba0152213ff43a51fbd6162aa24b4d657368546f6b656e3031014b4d657368546f6b656e303306581cd9312da562da182b02322fd8acb536f37eb9d29fba7c49dc17255527a1494d657368546f6b656e01",
-    "8282582026a59faa2eeb50b3a8c834978dcf7300c70340fbc3e95ac957ca8b2da7c70d7700825839005867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f9d4dcd7e454d2434164f4efb8edeb358d86a1dad9ec6224cfcbce3e61a00200b20",
-    "8282582026a59faa2eeb50b3a8c834978dcf7300c70340fbc3e95ac957ca8b2da7c70d7701825839005867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f9d4dcd7e454d2434164f4efb8edeb358d86a1dad9ec6224cfcbce3e6821a00115cb0a1581cc69b981db7a65e339a6d783755f85a2e03afa1cece9714c55fe4c913a1445553444d15",
-    "828258201886de27c3ae1d252f3081c79e3473dfdcfed47fe90941ca06977be4bc27b22e01825839005867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f9d4dcd7e454d2434164f4efb8edeb358d86a1dad9ec6224cfcbce3e61a35a1ab6b",
-    "828258202fc0cbf77c495ac8bfc2160e4e64c2192543f7d3ecf31c42767b29a3f6d191df01825839005867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f4977d9cee024650a88f62e526f6f37bd3f721677130f764b90861a27821a05095883a3581c3341fe984c724915cebac76ff65251df422f21fc75587ddc5f578ad7a145506172747901581cd213852f90d323b1240774b96a653945ba0152213ff43a51fbd6162aa14b4d657368546f6b656e303102581cee0b96031993a01dafa0c271439814426fd7d24395e96877cd8853f2a14f446f6c6c61722070726f766964657201",
   ];
 
   offlineFetcher.addUTxOs(
@@ -322,76 +256,217 @@ describe("CIP-30 endpoints", () => {
       },
     };
 
-    meshWallet = await MeshWallet.fromMnemonic({
-      networkId: 0,
-      walletAddressType: AddressType.Base,
-      mnemonic: "solution,".repeat(24).split(",").slice(0, 24),
-      fetcher: offlineFetcher,
-    });
-
-    browserWallet = await CardanoBrowserWallet.enable("eternl");
+    meshBrowserWallet = new MeshBrowserWallet(
+      await CardanoBrowserWallet.enable("eternl")
+    );
   });
   it("Wallet balance test", async () => {
-    const browserBalance = await browserWallet.getBalance();
-    const meshWalletBalance = await meshWallet.getBalance();
-    // There are going to be difference in the balance, due to address resolution
-    // It is not possible for Mesh Wallet to find all addresses especially if they use different
-    // staking keys. So we just check if the balance can be deserialized correctly.
-    expect(Serialization.Value.fromCbor(browserBalance)).toBeDefined();
-    expect(Serialization.Value.fromCbor(meshWalletBalance)).toBeDefined();
+    const browserBalance = await meshBrowserWallet.getBalanceMesh();
+    expect(browserBalance).toEqual([
+      { unit: "lovelace", quantity: "2649590710" },
+      {
+        unit: "0648e3795e3402c4f93ffd7e76d7741a7e449ae1a769c0297b7988134d657368546f6b656e3031",
+        quantity: "3",
+      },
+      {
+        unit: "0648e3795e3402c4f93ffd7e76d7741a7e449ae1a769c0297b7988134d657368546f6b656e3033",
+        quantity: "3",
+      },
+      {
+        unit: "0ba402c042775dfffedbd958cae3805a281bad34f46b5b6fd5c2c7714d657368546f6b656e",
+        quantity: "1",
+      },
+      {
+        unit: "0c5d5669f4b2c0c7be0dc771b387c4f2b55396d8b47701f82476e9304d657368546f6b656e3031",
+        quantity: "2",
+      },
+      {
+        unit: "2ae6f72c24d6e8866318b5d8512a7d6bd71f48421bfd5965aa6e8ea14d657368546f6b656e3031",
+        quantity: "1",
+      },
+      {
+        unit: "3341fe984c724915cebac76ff65251df422f21fc75587ddc5f578ad75061727479",
+        quantity: "1",
+      },
+      {
+        unit: "418f4cdc47b56879028737b4c19a648a3e72776b3ff6edf6563aaac94d657368546f6b656e3031",
+        quantity: "2",
+      },
+      {
+        unit: "418f4cdc47b56879028737b4c19a648a3e72776b3ff6edf6563aaac94d657368546f6b656e3033",
+        quantity: "2",
+      },
+      {
+        unit: "839680d91609accded1eca1dcfd2bd715b45ebe052321f52727ea0914d657368546f6b656e",
+        quantity: "1",
+      },
+      {
+        unit: "974966e3b5f81f3bf32054c09bd4bae7f123d674eb3958925e5b33776d6573682028313029",
+        quantity: "1",
+      },
+      {
+        unit: "b8df5676f026a61bc6435621df48217b3e652ea63f34e15113cbc456546f6b656e3031333234323334",
+        quantity: "2",
+      },
+      {
+        unit: "c1d3d06522380d6380ec3e52ec6dfd96f0ce8005bb14df811455d20f4d657368546f6b656e3031",
+        quantity: "2",
+      },
+      {
+        unit: "c69b981db7a65e339a6d783755f85a2e03afa1cece9714c55fe4c9135553444d",
+        quantity: "29999000021",
+      },
+      {
+        unit: "c76c35088ac826c8a0e6947c8ff78d8d4495789bc729419b3a3343053232322e6b756e7a61",
+        quantity: "1",
+      },
+      {
+        unit: "c76c35088ac826c8a0e6947c8ff78d8d4495789bc729419b3a3343053232326a696e676c6573",
+        quantity: "1",
+      },
+      {
+        unit: "ce5a4e6ea5819e96581a4b5680a4a5f94dec4337beade12e3851d01c4d657368546f6b656e3031",
+        quantity: "2",
+      },
+      {
+        unit: "d213852f90d323b1240774b96a653945ba0152213ff43a51fbd6162a4d657368546f6b656e3031",
+        quantity: "6",
+      },
+      {
+        unit: "d213852f90d323b1240774b96a653945ba0152213ff43a51fbd6162a4d657368546f6b656e3033",
+        quantity: "6",
+      },
+      {
+        unit: "d9312da562da182b02322fd8acb536f37eb9d29fba7c49dc172555274d657368546f6b656e",
+        quantity: "2",
+      },
+      {
+        unit: "ee0b96031993a01dafa0c271439814426fd7d24395e96877cd8853f2446f6c6c61722070726f7669646572",
+        quantity: "1",
+      },
+    ]);
   });
 
   it("Wallet change address test", async () => {
     // Change address should be the same for single address wallets
-    const browserChangeAddress = await browserWallet.getChangeAddress();
-    const meshWalletChangeAddress = await meshWallet.getChangeAddress();
-    expect(browserChangeAddress).toEqual(meshWalletChangeAddress);
+    const browserChangeAddress =
+      await meshBrowserWallet.getChangeAddressBech32();
+    expect(browserChangeAddress).toBe(
+      "addr_test1qpvx0sacufuypa2k4sngk7q40zc5c4npl337uusdh64kv0uafhxhu32dys6pvn6wlw8dav6cmp4pmtv7cc3yel9uu0nq93swx9"
+    );
   });
 
   it("Wallet collateral test", async () => {
-    const browserCollateral = await browserWallet.getCollateral();
-    const meshWalletCollateral = await meshWallet.getCollateral();
-    // There are going to be differences in collateral UTxOs, due to collateral selection
-    // strategy. So we just check if the collateral UTxOs can be deserialized correctly.
-    expect(
-      browserCollateral.map((c) =>
-        Serialization.TransactionUnspentOutput.fromCbor(c)
-      ).length
-    ).toBeGreaterThan(0);
-    expect(
-      meshWalletCollateral.map((c) =>
-        Serialization.TransactionUnspentOutput.fromCbor(c)
-      ).length
-    ).toBeGreaterThan(0);
+    const browserCollateral = await meshBrowserWallet.getCollateralMesh();
+    expect(browserCollateral).toEqual([
+      {
+        input: {
+          outputIndex: 0,
+          txHash:
+            "ff75de215ec3adbc3007e877bbce5e9936bfcb16112c5cbc58111dfd0c5a73a5",
+        },
+        output: {
+          address:
+            "addr_test1vpvx0sacufuypa2k4sngk7q40zc5c4npl337uusdh64kv0c7e4cxr",
+          amount: [
+            {
+              unit: "lovelace",
+              quantity: "5000000",
+            },
+          ],
+        },
+      },
+      {
+        input: {
+          outputIndex: 0,
+          txHash:
+            "d0e6eb766b2e4fcbc3333dc4bf8cb4dfad173631ea1e2b59a8a3a0d0ae56f6c9",
+        },
+        output: {
+          address:
+            "addr_test1vpvx0sacufuypa2k4sngk7q40zc5c4npl337uusdh64kv0c7e4cxr",
+          amount: [
+            {
+              unit: "lovelace",
+              quantity: "5000000",
+            },
+          ],
+        },
+      },
+      {
+        input: {
+          outputIndex: 0,
+          txHash:
+            "cf1955668990bd4019102df7734f3267f053dbef36bb3e7c4a70917a19e93e2e",
+        },
+        output: {
+          address:
+            "addr_test1vpvx0sacufuypa2k4sngk7q40zc5c4npl337uusdh64kv0c7e4cxr",
+          amount: [
+            {
+              unit: "lovelace",
+              quantity: "5000000",
+            },
+          ],
+        },
+      },
+    ]);
   });
 
   it("Wallet utxos test", async () => {
-    const browserUtxos = await browserWallet.getUtxos();
-    const meshWalletUtxos = await meshWallet.getUtxos();
-    // There are going to be differences in UTxOs, due to address resolution
-    // It is not possible for Mesh Wallet to find all addresses especially if they use different
-    // staking keys. So we just check if the UTxOs can be deserialized correctly.
-    expect(
-      browserUtxos.map((u) =>
-        Serialization.TransactionUnspentOutput.fromCbor(u)
-      ).length
-    ).toBeGreaterThan(0);
-    expect(
-      meshWalletUtxos.map((u) =>
-        Serialization.TransactionUnspentOutput.fromCbor(u)
-      ).length
-    ).toBeGreaterThan(0);
+    const browserUtxos = await meshBrowserWallet.getUtxosMesh();
+    expect(browserUtxos).toEqual([
+      {
+        input: {
+          outputIndex: 0,
+          txHash:
+            "2e20c10271bfcb5eac7ca90f0f66981042b66ffe088ec2e74d2244dacf1680c0",
+        },
+        output: {
+          address:
+            "addr_test1vpvx0sacufuypa2k4sngk7q40zc5c4npl337uusdh64kv0c7e4cxr",
+          amount: [
+            {
+              unit: "lovelace",
+              quantity: "1047330",
+            },
+            {
+              unit: "d213852f90d323b1240774b96a653945ba0152213ff43a51fbd6162a4d657368546f6b656e3031",
+              quantity: "1",
+            },
+          ],
+        },
+      },
+      {
+        input: {
+          outputIndex: 0,
+          txHash:
+            "6971384d6636b9258bb0f507201427cc6b7690d60a5eba11cca90359a18afe9e",
+        },
+        output: {
+          address:
+            "addr_test1vpvx0sacufuypa2k4sngk7q40zc5c4npl337uusdh64kv0c7e4cxr",
+          amount: [
+            {
+              unit: "lovelace",
+              quantity: "1200000",
+            },
+          ],
+        },
+      },
+    ]);
   });
 
   it("Wallet network id test", async () => {
-    const browserNetworkId = await browserWallet.getNetworkId();
-    const meshWalletNetworkId = await meshWallet.getNetworkId();
-    expect(browserNetworkId).toEqual(meshWalletNetworkId);
+    const browserNetworkId = await meshBrowserWallet.getNetworkId();
+    expect(browserNetworkId).toBe(0);
   });
 
   it("Wallet reward addresses test", async () => {
-    const browserRewardAddresses = await browserWallet.getRewardAddresses();
-    const meshWalletRewardAddresses = await meshWallet.getRewardAddresses();
-    expect(browserRewardAddresses).toEqual(meshWalletRewardAddresses);
+    const browserRewardAddresses =
+      await meshBrowserWallet.getRewardAddressesBech32();
+    expect(browserRewardAddresses).toEqual([
+      "stake_test1uzw5mnt7g4xjgdqkfa80hrk7kdvds6sa4k0vvgjvlj7w8eskffj2n",
+    ]);
   });
 });
