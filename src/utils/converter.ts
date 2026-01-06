@@ -7,23 +7,23 @@ import { Asset, UTxO } from "@meshsdk/common";
 export const toTxUnspentOutput = (utxo: UTxO) => {
   const txInput = new Serialization.TransactionInput(
     Cardano.TransactionId(utxo.input.txHash),
-    BigInt(utxo.input.outputIndex),
+    BigInt(utxo.input.outputIndex)
   );
 
   const txOutput = new Serialization.TransactionOutput(
     Cardano.Address.fromBech32(utxo.output.address),
-    toValue(utxo.output.amount),
+    toValue(utxo.output.amount)
   );
 
   if (utxo.output.dataHash !== undefined) {
     txOutput.setDatum(
-      Serialization.Datum.fromCore(Hash32ByteBase16(utxo.output.dataHash)),
+      Serialization.Datum.fromCore(Hash32ByteBase16(utxo.output.dataHash))
     );
   }
 
   if (utxo.output.plutusData !== undefined) {
     const plutusData = Serialization.PlutusData.fromCbor(
-      HexBlob(utxo.output.plutusData),
+      HexBlob(utxo.output.plutusData)
     );
     const datum = new Serialization.Datum(undefined, plutusData);
     txOutput.setDatum(datum);
@@ -31,11 +31,41 @@ export const toTxUnspentOutput = (utxo: UTxO) => {
 
   if (utxo.output.scriptRef !== undefined) {
     txOutput.setScriptRef(
-      Serialization.Script.fromCbor(HexBlob(utxo.output.scriptRef)),
+      Serialization.Script.fromCbor(HexBlob(utxo.output.scriptRef))
     );
   }
 
   return new Serialization.TransactionUnspentOutput(txInput, txOutput);
+};
+
+export const fromTxUnspentOutput = (
+  txUnspentOutput: Serialization.TransactionUnspentOutput
+): UTxO => {
+  const dataHash = txUnspentOutput.output().datum()
+    ? txUnspentOutput.output().datum()?.asDataHash()?.toString()
+    : undefined;
+
+  const scriptRef = txUnspentOutput.output().scriptRef()
+    ? txUnspentOutput.output().scriptRef()?.toCbor().toString()
+    : undefined;
+
+  const plutusData = txUnspentOutput.output().datum()?.asInlineData()
+    ? txUnspentOutput.output().datum()?.asInlineData()?.toCbor().toString()
+    : undefined;
+
+  return <UTxO>{
+    input: {
+      outputIndex: Number(txUnspentOutput.input().index()),
+      txHash: txUnspentOutput.input().transactionId(),
+    },
+    output: {
+      address: txUnspentOutput.output().address().toBech32(),
+      amount: fromValue(txUnspentOutput.output().amount()),
+      dataHash: dataHash, // todo not sure if correct
+      plutusData: plutusData, // todo not sure if correct
+      scriptRef: scriptRef, // todo not sure if correct
+    },
+  };
 };
 
 export const toValue = (assets: Asset[]) => {
@@ -47,10 +77,10 @@ export const toValue = (assets: Asset[]) => {
     });
 
   const lovelace = assets.find(
-    (asset) => asset.unit === "lovelace" || asset.unit === "",
+    (asset) => asset.unit === "lovelace" || asset.unit === ""
   );
   const value = new Serialization.Value(
-    BigInt(lovelace ? lovelace.quantity : 0),
+    BigInt(lovelace ? lovelace.quantity : 0)
   );
 
   if (assets.length > 1 || !lovelace) {
@@ -58,4 +88,29 @@ export const toValue = (assets: Asset[]) => {
   }
 
   return value;
+};
+
+export const fromValue = (value: Serialization.Value) => {
+  const assets: Asset[] = [
+    { unit: "lovelace", quantity: value.coin().toString() },
+  ];
+
+  const multiAsset = value.multiasset();
+  if (multiAsset !== undefined) {
+    const _assets = Array.from(multiAsset.keys());
+    for (let i = 0; i < _assets.length; i += 1) {
+      const assetId = _assets[i];
+      if (assetId !== undefined) {
+        const assetQuantity = multiAsset.get(assetId);
+        if (assetQuantity !== undefined) {
+          assets.push({
+            unit: assetId,
+            quantity: assetQuantity.toString(),
+          });
+        }
+      }
+    }
+  }
+
+  return assets;
 };

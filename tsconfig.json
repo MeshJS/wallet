@@ -5,7 +5,7 @@
   "exclude": ["dist", "node_modules"],
   "compilerOptions": {
     "target": "ES2020",
-    "lib": ["ES2020"],
+    "lib": ["ES2020", "DOM"],
     "module": "commonjs",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true

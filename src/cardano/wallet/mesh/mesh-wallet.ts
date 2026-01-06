@@ -230,12 +230,15 @@ export class MeshWallet extends BaseCardanoWallet {
 
   /**
    * Get the reward address for the wallet.
-   * @returns {Promise<string>} A promise that resolves to the reward address in Bech32 format
+   * @returns {Promise<string[]>} A promise that resolves an array of reward addresses in Bech32 format
    */
-  async getRewardAddressBech32(): Promise<string> {
-    const address = await this.getRewardAddress();
-    const cardanoAddr = Cardano.Address.fromBytes(HexBlob(address));
-    return cardanoAddr.toBech32();
+  async getRewardAddressesBech32(): Promise<string[]> {
+    const addresses = await this.getRewardAddresses();
+
+    return addresses.map((addr) => {
+      const cardanoAddr = Cardano.Address.fromBytes(HexBlob(addr));
+      return cardanoAddr.toBech32();
+    });
   }
 
   /**

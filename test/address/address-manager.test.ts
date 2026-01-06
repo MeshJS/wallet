@@ -61,7 +61,7 @@ describe("AddressManager", () => {
 
       const rewardAddress = await manager.getRewardAccount();
       expect(rewardAddress.getAddressBech32()).toBe(
-        "stake_test1upvx0sacufuypa2k4sngk7q40zc5c4npl337uusdh64kv0c73tq3f"
+        "stake_test1uzw5mnt7g4xjgdqkfa80hrk7kdvds6sa4k0vvgjvlj7w8eskffj2n"
       );
     });
   });
@@ -287,7 +287,7 @@ describe("AddressManager", () => {
       const address = await manager.getRewardAccount();
       expect(address.addressType).toBe(AddressType.Reward);
       expect(address.getAddressBech32()).toBe(
-        "stake_test1upvx0sacufuypa2k4sngk7q40zc5c4npl337uusdh64kv0c73tq3f"
+        "stake_test1uzw5mnt7g4xjgdqkfa80hrk7kdvds6sa4k0vvgjvlj7w8eskffj2n"
       );
     });
 

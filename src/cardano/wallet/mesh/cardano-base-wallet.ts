@@ -186,7 +186,7 @@ export class BaseCardanoWallet implements ICardanoWallet {
    * Get the network ID.
    * @returns {number} The network ID
    */
-  getNetworkId(): number {
+  async getNetworkId(): Promise<number> {
     return this.networkId;
   }
 
@@ -322,11 +322,12 @@ export class BaseCardanoWallet implements ICardanoWallet {
 
   /**
    * Get the reward address for the wallet.
-   * @returns {Promise<string>} A promise that resolves to the reward address in hex format
+   *
+   * @returns {Promise<string[]>} A promise that resolves an array of reward addresses in hex format
    */
-  async getRewardAddress(): Promise<string> {
+  async getRewardAddresses(): Promise<string[]> {
     const rewardAddress = await this.addressManager.getRewardAccount();
-    return rewardAddress.getAddressHex();
+    return [rewardAddress.getAddressHex()];
   }
 
   /**
@@ -371,16 +372,16 @@ export class BaseCardanoWallet implements ICardanoWallet {
     return await CardanoSigner.signTx(tx, signers, false);
   }
 
-  async signData(data: string, addressHex?: string): Promise<DataSignature> {
-    let targetAddressHex = addressHex;
-    if (!targetAddressHex) {
+  async signData(addressBech32: string, data: string): Promise<DataSignature> {
+    let targetAddressBech32 = addressBech32;
+    if (!targetAddressBech32) {
       const address = await this.addressManager.getNextAddress(
         this.walletAddressType
       );
-      targetAddressHex = address.getAddressHex();
+      targetAddressBech32 = address.getAddressBech32();
     }
 
-    const address = Cardano.Address.fromString(targetAddressHex);
+    const address = Cardano.Address.fromBech32(targetAddressBech32);
     if (!address) {
       throw new Error("[CardanoWallet] Invalid address");
     }
@@ -409,7 +410,7 @@ export class BaseCardanoWallet implements ICardanoWallet {
       );
     }
 
-    return await CardanoSigner.signData(data, targetAddressHex, signer);
+    return await CardanoSigner.signData(data, address.toBytes(), signer);
   }
 
   public async fetchAccountUtxos(): Promise<UTxO[]> {

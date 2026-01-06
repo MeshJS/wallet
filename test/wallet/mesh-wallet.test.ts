@@ -319,9 +319,9 @@ describe("CardanoBaseWallet", () => {
       fetcher: offlineFetcher,
     });
 
-    const addressHex = await wallet.getChangeAddress();
+    const addressBech32 = await wallet.getChangeAddressBech32();
 
-    const signedData = await wallet.signData("abc", addressHex);
+    const signedData = await wallet.signData(addressBech32, "abc");
     expect(signedData).toEqual<DataSignature>({
       key: "a4010103272006215820c32dfdb461dd016e8fdd9b6d424a77439eab8f8c644a804b013b6cefa2454f95",
       signature:
