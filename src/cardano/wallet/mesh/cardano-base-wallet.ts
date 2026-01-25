@@ -20,9 +20,9 @@ export type { CredentialSource };
 export type WalletAddressType = AddressType.Base | AddressType.Enterprise;
 
 /**
- * Configuration for creating a BaseCardanoWallet instance.
+ * Configuration for creating a CardanoHeadlessWallet instance.
  */
-export interface BaseCardanoWalletConfig {
+export interface CardanoHeadlessWalletConfig {
   /**
    * The source for wallet's signing keys and addresses. Could either be a secret manager or explicit credentials.
    */
@@ -46,7 +46,7 @@ export interface BaseCardanoWalletConfig {
   submitter?: ISubmitter;
 }
 
-export class BaseCardanoWallet implements ICardanoWallet {
+export class CardanoHeadlessWallet implements ICardanoWallet {
   protected networkId: number;
   protected addressManager: AddressManager;
   protected fetcher?: IFetcher;
@@ -69,14 +69,14 @@ export class BaseCardanoWallet implements ICardanoWallet {
   }
 
   static async create(
-    config: BaseCardanoWalletConfig
-  ): Promise<BaseCardanoWallet> {
+    config: CardanoHeadlessWalletConfig
+  ): Promise<CardanoHeadlessWallet> {
     const addressManager = await AddressManager.create({
       addressSource: config.addressSource,
       networkId: config.networkId,
     });
 
-    return new BaseCardanoWallet(
+    return new CardanoHeadlessWallet(
       config.networkId,
       addressManager,
       config.walletAddressType,
@@ -86,17 +86,17 @@ export class BaseCardanoWallet implements ICardanoWallet {
   }
 
   /**
-   * Create a BaseCardanoWallet instance from a Bip32 root in Bech32 format.
+   * Create a CardanoHeadlessWallet instance from a Bip32 root in Bech32 format.
    * @param config The configuration object
-   * @returns {Promise<BaseCardanoWallet>} A promise that resolves to a BaseCardanoWallet instance
+   * @returns {Promise<CardanoHeadlessWallet>} A promise that resolves to a CardanoHeadlessWallet instance
    */
   static async fromBip32Root(
-    config: Omit<BaseCardanoWalletConfig, "addressSource"> & {
+    config: Omit<CardanoHeadlessWalletConfig, "addressSource"> & {
       bech32: string;
     }
-  ): Promise<BaseCardanoWallet> {
+  ): Promise<CardanoHeadlessWallet> {
     const bip32 = InMemoryBip32.fromBech32(config.bech32);
-    return BaseCardanoWallet.create({
+    return CardanoHeadlessWallet.create({
       addressSource: { type: "secretManager", secretManager: bip32 },
       networkId: config.networkId,
       walletAddressType: config.walletAddressType,
@@ -106,17 +106,17 @@ export class BaseCardanoWallet implements ICardanoWallet {
   }
 
   /**
-   * Create a BaseCardanoWallet instance from a Bip32 root in hex format.
+   * Create a CardanoHeadlessWallet instance from a Bip32 root in hex format.
    * @param config The configuration object
-   * @returns {Promise<BaseCardanoWallet>} A promise that resolves to a BaseCardanoWallet instance
+   * @returns {Promise<CardanoHeadlessWallet>} A promise that resolves to a CardanoHeadlessWallet instance
    */
   static async fromBip32RootHex(
-    config: Omit<BaseCardanoWalletConfig, "addressSource"> & {
+    config: Omit<CardanoHeadlessWalletConfig, "addressSource"> & {
       hex: string;
     }
-  ): Promise<BaseCardanoWallet> {
+  ): Promise<CardanoHeadlessWallet> {
     const bip32 = InMemoryBip32.fromKeyHex(config.hex);
-    return BaseCardanoWallet.create({
+    return CardanoHeadlessWallet.create({
       addressSource: { type: "secretManager", secretManager: bip32 },
       networkId: config.networkId,
       walletAddressType: config.walletAddressType,
@@ -126,21 +126,21 @@ export class BaseCardanoWallet implements ICardanoWallet {
   }
 
   /**
-   * Create a BaseCardanoWallet instance from a mnemonic phrase.
+   * Create a CardanoHeadlessWallet instance from a mnemonic phrase.
    * @param config The configuration object
-   * @returns {Promise<BaseCardanoWallet>} A promise that resolves to a BaseCardanoWallet instance
+   * @returns {Promise<CardanoHeadlessWallet>} A promise that resolves to a CardanoHeadlessWallet instance
    */
   static async fromMnemonic(
-    config: Omit<BaseCardanoWalletConfig, "addressSource"> & {
+    config: Omit<CardanoHeadlessWalletConfig, "addressSource"> & {
       mnemonic: string[];
       password?: string;
     }
-  ): Promise<BaseCardanoWallet> {
+  ): Promise<CardanoHeadlessWallet> {
     const bip32 = await InMemoryBip32.fromMnemonic(
       config.mnemonic,
       config.password
     );
-    return BaseCardanoWallet.create({
+    return CardanoHeadlessWallet.create({
       addressSource: { type: "secretManager", secretManager: bip32 },
       networkId: config.networkId,
       walletAddressType: config.walletAddressType,
@@ -150,13 +150,13 @@ export class BaseCardanoWallet implements ICardanoWallet {
   }
 
   static async fromCredentialSources(
-    config: Omit<BaseCardanoWalletConfig, "addressSource"> & {
+    config: Omit<CardanoHeadlessWalletConfig, "addressSource"> & {
       paymentCredentialSource: CredentialSource;
       stakeCredentialSource?: CredentialSource;
       drepCredentialSource?: CredentialSource;
     }
-  ): Promise<BaseCardanoWallet> {
-    return BaseCardanoWallet.create({
+  ): Promise<CardanoHeadlessWallet> {
+    return CardanoHeadlessWallet.create({
       addressSource: {
         type: "credentials",
         paymentCredential: config.paymentCredentialSource,

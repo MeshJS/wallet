@@ -1,6 +1,6 @@
 import { OfflineFetcher } from "@meshsdk/provider";
-import { MeshBrowserWallet } from "../../src/cardano/wallet/browser/mesh-browser-wallet";
-import { MeshWallet } from "../../src/cardano/wallet/mesh/mesh-wallet";
+import { MeshCardanoBrowserWallet } from "../../src/cardano/wallet/browser/mesh-browser-wallet";
+import { MeshCardanoHeadlessWallet } from "../../src/cardano/wallet/mesh/mesh-wallet";
 import { AddressType } from "../../src";
 import { fromTxUnspentOutput } from "../../src/utils/converter";
 import { Serialization } from "@cardano-sdk/core";
@@ -9,7 +9,7 @@ import { CardanoBrowserWallet } from "../../src/cardano/wallet/browser/cardano-b
 
 describe("CIP-30 endpoints", () => {
   let browserWallet: ICardanoWallet;
-  let meshWallet: MeshWallet;
+  let meshCardanoHeadlessWallet: MeshCardanoHeadlessWallet;
   const offlineFetcher = new OfflineFetcher();
 
   const utxosHex = [
@@ -322,7 +322,7 @@ describe("CIP-30 endpoints", () => {
       },
     };
 
-    meshWallet = await MeshWallet.fromMnemonic({
+    meshCardanoHeadlessWallet = await MeshCardanoHeadlessWallet.fromMnemonic({
       networkId: 0,
       walletAddressType: AddressType.Base,
       mnemonic: "solution,".repeat(24).split(",").slice(0, 24),
@@ -333,24 +333,24 @@ describe("CIP-30 endpoints", () => {
   });
   it("Wallet balance test", async () => {
     const browserBalance = await browserWallet.getBalance();
-    const meshWalletBalance = await meshWallet.getBalance();
+    const meshCardanoHeadlessWalletBalance = await meshCardanoHeadlessWallet.getBalance();
     // There are going to be difference in the balance, due to address resolution
     // It is not possible for Mesh Wallet to find all addresses especially if they use different
     // staking keys. So we just check if the balance can be deserialized correctly.
     expect(Serialization.Value.fromCbor(browserBalance)).toBeDefined();
-    expect(Serialization.Value.fromCbor(meshWalletBalance)).toBeDefined();
+    expect(Serialization.Value.fromCbor(meshCardanoHeadlessWalletBalance)).toBeDefined();
   });
 
   it("Wallet change address test", async () => {
     // Change address should be the same for single address wallets
     const browserChangeAddress = await browserWallet.getChangeAddress();
-    const meshWalletChangeAddress = await meshWallet.getChangeAddress();
-    expect(browserChangeAddress).toEqual(meshWalletChangeAddress);
+    const meshCardanoHeadlessWalletChangeAddress = await meshCardanoHeadlessWallet.getChangeAddress();
+    expect(browserChangeAddress).toEqual(meshCardanoHeadlessWalletChangeAddress);
   });
 
   it("Wallet collateral test", async () => {
     const browserCollateral = await browserWallet.getCollateral();
-    const meshWalletCollateral = await meshWallet.getCollateral();
+    const meshCardanoHeadlessWalletCollateral = await meshCardanoHeadlessWallet.getCollateral();
     // There are going to be differences in collateral UTxOs, due to collateral selection
     // strategy. So we just check if the collateral UTxOs can be deserialized correctly.
     expect(
@@ -359,7 +359,7 @@ describe("CIP-30 endpoints", () => {
       ).length
     ).toBeGreaterThan(0);
     expect(
-      meshWalletCollateral.map((c) =>
+      meshCardanoHeadlessWalletCollateral.map((c) =>
         Serialization.TransactionUnspentOutput.fromCbor(c)
       ).length
     ).toBeGreaterThan(0);
@@ -367,7 +367,7 @@ describe("CIP-30 endpoints", () => {
 
   it("Wallet utxos test", async () => {
     const browserUtxos = await browserWallet.getUtxos();
-    const meshWalletUtxos = await meshWallet.getUtxos();
+    const meshCardanoHeadlessWalletUtxos = await meshCardanoHeadlessWallet.getUtxos();
     // There are going to be differences in UTxOs, due to address resolution
     // It is not possible for Mesh Wallet to find all addresses especially if they use different
     // staking keys. So we just check if the UTxOs can be deserialized correctly.
@@ -377,7 +377,7 @@ describe("CIP-30 endpoints", () => {
       ).length
     ).toBeGreaterThan(0);
     expect(
-      meshWalletUtxos.map((u) =>
+      meshCardanoHeadlessWalletUtxos.map((u) =>
         Serialization.TransactionUnspentOutput.fromCbor(u)
       ).length
     ).toBeGreaterThan(0);
@@ -385,13 +385,13 @@ describe("CIP-30 endpoints", () => {
 
   it("Wallet network id test", async () => {
     const browserNetworkId = await browserWallet.getNetworkId();
-    const meshWalletNetworkId = await meshWallet.getNetworkId();
-    expect(browserNetworkId).toEqual(meshWalletNetworkId);
+    const meshCardanoHeadlessWalletNetworkId = await meshCardanoHeadlessWallet.getNetworkId();
+    expect(browserNetworkId).toEqual(meshCardanoHeadlessWalletNetworkId);
   });
 
   it("Wallet reward addresses test", async () => {
     const browserRewardAddresses = await browserWallet.getRewardAddresses();
-    const meshWalletRewardAddresses = await meshWallet.getRewardAddresses();
-    expect(browserRewardAddresses).toEqual(meshWalletRewardAddresses);
+    const meshCardanoHeadlessWalletRewardAddresses = await meshCardanoHeadlessWallet.getRewardAddresses();
+    expect(browserRewardAddresses).toEqual(meshCardanoHeadlessWalletRewardAddresses);
   });
 });

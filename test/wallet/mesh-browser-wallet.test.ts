@@ -1,11 +1,11 @@
 import { OfflineFetcher } from "@meshsdk/provider";
-import { MeshBrowserWallet } from "../../src/cardano/wallet/browser/mesh-browser-wallet";
+import { MeshCardanoBrowserWallet } from "../../src/cardano/wallet/browser/mesh-browser-wallet";
 import { fromTxUnspentOutput } from "../../src/utils/converter";
 import { Serialization } from "@cardano-sdk/core";
 import { CardanoBrowserWallet } from "../../src/cardano/wallet/browser/cardano-browser-wallet";
 
 describe("CIP-30 endpoints", () => {
-  let meshBrowserWallet: MeshBrowserWallet;
+  let meshCardanoBrowserWallet: MeshCardanoBrowserWallet;
   const offlineFetcher = new OfflineFetcher();
 
   const utxosHex = [
@@ -256,12 +256,12 @@ describe("CIP-30 endpoints", () => {
       },
     };
 
-    meshBrowserWallet = new MeshBrowserWallet(
+    meshCardanoBrowserWallet = new MeshCardanoBrowserWallet(
       await CardanoBrowserWallet.enable("eternl")
     );
   });
   it("Wallet balance test", async () => {
-    const browserBalance = await meshBrowserWallet.getBalanceMesh();
+    const browserBalance = await meshCardanoBrowserWallet.getBalanceMesh();
     expect(browserBalance).toEqual([
       { unit: "lovelace", quantity: "2649590710" },
       {
@@ -350,14 +350,14 @@ describe("CIP-30 endpoints", () => {
   it("Wallet change address test", async () => {
     // Change address should be the same for single address wallets
     const browserChangeAddress =
-      await meshBrowserWallet.getChangeAddressBech32();
+      await meshCardanoBrowserWallet.getChangeAddressBech32();
     expect(browserChangeAddress).toBe(
       "addr_test1qpvx0sacufuypa2k4sngk7q40zc5c4npl337uusdh64kv0uafhxhu32dys6pvn6wlw8dav6cmp4pmtv7cc3yel9uu0nq93swx9"
     );
   });
 
   it("Wallet collateral test", async () => {
-    const browserCollateral = await meshBrowserWallet.getCollateralMesh();
+    const browserCollateral = await meshCardanoBrowserWallet.getCollateralMesh();
     expect(browserCollateral).toEqual([
       {
         input: {
@@ -414,7 +414,7 @@ describe("CIP-30 endpoints", () => {
   });
 
   it("Wallet utxos test", async () => {
-    const browserUtxos = await meshBrowserWallet.getUtxosMesh();
+    const browserUtxos = await meshCardanoBrowserWallet.getUtxosMesh();
     expect(browserUtxos).toEqual([
       {
         input: {
@@ -458,13 +458,13 @@ describe("CIP-30 endpoints", () => {
   });
 
   it("Wallet network id test", async () => {
-    const browserNetworkId = await meshBrowserWallet.getNetworkId();
+    const browserNetworkId = await meshCardanoBrowserWallet.getNetworkId();
     expect(browserNetworkId).toBe(0);
   });
 
   it("Wallet reward addresses test", async () => {
     const browserRewardAddresses =
-      await meshBrowserWallet.getRewardAddressesBech32();
+      await meshCardanoBrowserWallet.getRewardAddressesBech32();
     expect(browserRewardAddresses).toEqual([
       "stake_test1uzw5mnt7g4xjgdqkfa80hrk7kdvds6sa4k0vvgjvlj7w8eskffj2n",
     ]);

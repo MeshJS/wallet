@@ -15,7 +15,7 @@ It is possible that when querying balance for example, the same mnemonic will pr
 #### Deriving from mnemonic
 
 ```typescript
-const wallet = await MeshWallet.fromMnemonic({
+const wallet = await MeshCardanoHeadlessWallet.fromMnemonic({
   mnemonic:
     "globe cupboard camera aim congress cradle decorate enter fringe dove margin witness police coral junk genius harbor fire evolve climb rather broccoli post snack".split(
       " "
@@ -28,11 +28,11 @@ const wallet = await MeshWallet.fromMnemonic({
 wallet.signTx(txHex);
 ```
 
-The `BaseCardanoWallet` mostly needs a fetcher to function properly, because when signing a txCborHex, the wallet searches through the transaction to identify which part of the wallet needs to sign the transaction. Without a fetcher, input information cannot be obtained, and signing functionality doesn't work.
+The `CardanoHeadlessWallet` mostly needs a fetcher to function properly, because when signing a txCborHex, the wallet searches through the transaction to identify which part of the wallet needs to sign the transaction. Without a fetcher, input information cannot be obtained, and signing functionality doesn't work.
 
 #### Blind signing
 
-If you wanted to blindly sign a transaction (without first attempting to identify IF the wallet needs to sign). Then it is possible by using the more primitive classes that `BaseCardanoWallet` or `MeshWallet` was built upon.
+If you wanted to blindly sign a transaction (without first attempting to identify IF the wallet needs to sign). Then it is possible by using the more primitive classes that `CardanoHeadlessWallet` or `MeshCardanoHeadlessWallet` was built upon.
 
 #### In Memory BIP32
 
@@ -74,9 +74,9 @@ const signedTx = CardanoSigner.signTx(txHex, [paymentSigner], true);
 
 #### Other derivation paths
 
-The `MeshWallet` class is quite good out of the box as a single address wallet, but if you wanted to use other derivation paths, it is possible, but will be slightly more cumbersome.
+The `MeshCardanoHeadlessWallet` class is quite good out of the box as a single address wallet, but if you wanted to use other derivation paths, it is possible, but will be slightly more cumbersome.
 
-`MeshWallet` has a constructor that allows custom `payment`, `staking` and `drep` credential sources. Note that these constructors do accept `scriptHash` or `ISigner` except for `payment` key.
+`MeshCardanoHeadlessWallet` has a constructor that allows custom `payment`, `staking` and `drep` credential sources. Note that these constructors do accept `scriptHash` or `ISigner` except for `payment` key.
 
 `payment` key has to be able to be used for signing, but it is fully possible to use `scriptHash` for the staking and/or drep part. The wallet will not attempt to sign with any `scriptHash` keys, but will use them to derive the `BaseAddress` and `DrepIds`.
 
@@ -89,7 +89,7 @@ const paymentSigner = await bip32.getSigner([
   5,
 ]);
 
-const wallet = await MeshWallet.fromCredentialSources({
+const wallet = await MeshCardanoHeadlessWallet.fromCredentialSources({
   networkId: 0,
   walletAddressType: AddressType.Enterprise,
   paymentCredentialSource: {
@@ -108,7 +108,7 @@ const paymentSigner = BaseSigner.fromNormalKeyHex(
   "d4ffb1e83d44b66849b4f16183cbf2ba1358c491cfeb39f0b66b5f811a88f182"
 );
 
-const wallet = await MeshWallet.fromCredentialSources({
+const wallet = await MeshCardanoHeadlessWallet.fromCredentialSources({
   networkId: 0,
   walletAddressType: AddressType.Enterprise,
   paymentCredentialSource: {
@@ -118,47 +118,47 @@ const wallet = await MeshWallet.fromCredentialSources({
 });
 ```
 
-## BaseCardanoWallet vs MeshWallet
+## CardanoHeadlessWallet vs MeshCardanoHeadlessWallet
 
-The `BaseCardanoWallet` class acts as the underlying CIP-30 compatible wallet implementation. It attempts to adhere to the available APIs and return types defined in CIP-30.
+The `CardanoHeadlessWallet` class acts as the underlying CIP-30 compatible wallet implementation. It attempts to adhere to the available APIs and return types defined in CIP-30.
 
 However, due to our experiences with Cardano development, the return types defined in CIP-30 are all in a very inconvenient format. Everything is returned in CBOR hex format, which is not very useful in its raw format, and generally has to be parsed using a serialization library to obtain it in a more readily consumable format.
 
-`MeshWallet` is an attempt to extend the `BaseCardanoWallet` in such a way that there are extra endpoints that do this parsing of the CBOR hex returns in a more readibly consumable way.
+`MeshCardanoHeadlessWallet` is an attempt to extend the `CardanoHeadlessWallet` in such a way that there are extra endpoints that do this parsing of the CBOR hex returns in a more readibly consumable way.
 
 Probably the most relevant of these APIs would be the difference between `signTx` and `signTxReturnFullTx`. As the name of the API suggests, `signTxReturnFullTx` returns the transaction in FULL, with the extra vkey witnesses placed into the witness set. While `signTx` returns the signatures serialized in a transaction witness set, which requires extra manipulation using a serialization library to place the signatures in the transaction's witness set before it can be submitted.
 
 ## CIP-30
 
-Once a MeshWallet is set up, it is possible to use it as an instance of a CIP-30 wallet.
+Once a MeshCardanoHeadlessWallet is set up, it is possible to use it as an instance of a CIP-30 wallet.
 
 ```typescript
-const meshWallet = await MeshWallet.fromMnemonic({
+const meshCardanoHeadlessWallet = await MeshCardanoHeadlessWallet.fromMnemonic({
   networkId: 0,
   walletAddressType: AddressType.Base,
   mnemonic: mnemonic,
   fetcher: fetcher,
 });
 
-const meshWalletBalance = await meshWallet.getBalance();
-const meshWalletChangeAddress = await meshWallet.getChangeAddress();
-const meshWalletNetworkId = await meshWallet.getNetworkId();
-const meshWalletCollateral = await meshWallet.getCollateral();
-const meshWalletUtxos = await meshWallet.getUtxos();
-const meshWalletRewardAddresses = await meshWallet.getRewardAddresses();
+const meshCardanoHeadlessWalletBalance = await meshCardanoHeadlessWallet.getBalance();
+const meshCardanoHeadlessWalletChangeAddress = await meshCardanoHeadlessWallet.getChangeAddress();
+const meshCardanoHeadlessWalletNetworkId = await meshCardanoHeadlessWallet.getNetworkId();
+const meshCardanoHeadlessWalletCollateral = await meshCardanoHeadlessWallet.getCollateral();
+const meshCardanoHeadlessWalletUtxos = await meshCardanoHeadlessWallet.getUtxos();
+const meshCardanoHeadlessWalletRewardAddresses = await meshCardanoHeadlessWallet.getRewardAddresses();
 
-const meshWalletsignedData = await meshWallet.signData(
-  meshWalletChangeAddress,
+const meshCardanoHeadlessWalletsignedData = await meshCardanoHeadlessWallet.signData(
+  meshCardanoHeadlessWalletChangeAddress,
   "abc"
 );
-const signature = await meshWallet.signTx(transactionHex, true);
+const signature = await meshCardanoHeadlessWallet.signTx(transactionHex, true);
 ```
 
 ## Browser Wallet
 
 `mesh-wallet` provides a class that helps with setting up Cardano Browser wallets.
 
-Once enabled, the wallet object can be used the same way as a MeshWallet.
+Once enabled, the wallet object can be used the same way as a MeshCardanoHeadlessWallet.
 
 ```typescript
 const browserWallet = await CardanoBrowserWallet.enable("eternl");
@@ -171,7 +171,7 @@ const browserNetworkId = await browserWallet.getNetworkId();
 const browserRewardAddresses = await browserWallet.getRewardAddresses();
 
 const browserSignedData = await browserWallet.signData(
-  meshWalletChangeAddress,
+  meshCardanoHeadlessWalletChangeAddress,
   "abc"
 );
 const signature = await browserWallet.signTx(transactionHex, true);
@@ -179,20 +179,20 @@ const signature = await browserWallet.signTx(transactionHex, true);
 
 ## Mesh Browser Wallet
 
-`mesh-wallet` also provides a wrapper class around `CardanoBrowserWallet` called `MeshBrowserWallet` that implements all the convenient return types that might be easier to consume immediately.
+`mesh-wallet` also provides a wrapper class around `CardanoBrowserWallet` called `MeshCardanoBrowserWallet` that implements all the convenient return types that might be easier to consume immediately.
 
 ```typescript
-const meshBrowserWallet = await MeshBrowserWallet.enable("eternl");
+const meshCardanoBrowserWallet = await MeshCardanoBrowserWallet.enable("eternl");
 
-const browserBalance = await meshBrowserWallet.getBalanceMesh();
-const browserChangeAddress = await meshBrowserWallet.getChangeAddressBech32();
-const browserCollateral = await meshBrowserWallet.getCollateralMesh();
-const browserUtxos = await meshBrowserWallet.getUtxosMesh();
-const browserNetworkId = await meshBrowserWallet.getNetworkId();
+const browserBalance = await meshCardanoBrowserWallet.getBalanceMesh();
+const browserChangeAddress = await meshCardanoBrowserWallet.getChangeAddressBech32();
+const browserCollateral = await meshCardanoBrowserWallet.getCollateralMesh();
+const browserUtxos = await meshCardanoBrowserWallet.getUtxosMesh();
+const browserNetworkId = await meshCardanoBrowserWallet.getNetworkId();
 const browserRewardAddresses =
-  await meshBrowserWallet.getRewardAddressesBech32();
+  await meshCardanoBrowserWallet.getRewardAddressesBech32();
 
-const signedTx = await meshBrowserWallet.signTxReturnFullTx(
+const signedTx = await meshCardanoBrowserWallet.signTxReturnFullTx(
   transactionHex,
   true
 );
