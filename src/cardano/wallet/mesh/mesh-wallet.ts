@@ -9,22 +9,22 @@ import {
   CredentialSource,
 } from "../../address/single-address-manager";
 import {
-  BaseCardanoWallet,
-  BaseCardanoWalletConfig,
+  CardanoHeadlessWallet,
+  CardanoHeadlessWalletConfig,
 } from "./cardano-base-wallet";
 
 /**
- * MeshWallet provides additional convenience methods on top of BaseCardanoWallet,
+ * MeshCardanoHeadlessWallet provides additional convenience methods on top of CardanoHeadlessWallet,
  * such as returning results in Mesh-compatible formats and Bech32 addresses.
  */
-export class MeshWallet extends BaseCardanoWallet {
-  static async create(config: BaseCardanoWalletConfig): Promise<MeshWallet> {
+export class MeshCardanoHeadlessWallet extends CardanoHeadlessWallet {
+  static async create(config: CardanoHeadlessWalletConfig): Promise<MeshCardanoHeadlessWallet> {
     const addressManager = await AddressManager.create({
       addressSource: config.addressSource,
       networkId: config.networkId,
     });
 
-    return new MeshWallet(
+    return new MeshCardanoHeadlessWallet(
       config.networkId,
       addressManager,
       config.walletAddressType,
@@ -34,16 +34,16 @@ export class MeshWallet extends BaseCardanoWallet {
   }
 
   static async fromMnemonic(
-    config: Omit<BaseCardanoWalletConfig, "addressSource"> & {
+    config: Omit<CardanoHeadlessWalletConfig, "addressSource"> & {
       mnemonic: string[];
       password?: string;
     }
-  ): Promise<MeshWallet> {
+  ): Promise<MeshCardanoHeadlessWallet> {
     const bip32 = await InMemoryBip32.fromMnemonic(
       config.mnemonic,
       config.password
     );
-    return MeshWallet.create({
+    return MeshCardanoHeadlessWallet.create({
       addressSource: { type: "secretManager", secretManager: bip32 },
       networkId: config.networkId,
       walletAddressType: config.walletAddressType,
@@ -53,12 +53,12 @@ export class MeshWallet extends BaseCardanoWallet {
   }
 
   static async fromBip32Root(
-    config: Omit<BaseCardanoWalletConfig, "addressSource"> & {
+    config: Omit<CardanoHeadlessWalletConfig, "addressSource"> & {
       bech32: string;
     }
-  ): Promise<MeshWallet> {
+  ): Promise<MeshCardanoHeadlessWallet> {
     const bip32 = InMemoryBip32.fromBech32(config.bech32);
-    return MeshWallet.create({
+    return MeshCardanoHeadlessWallet.create({
       addressSource: { type: "secretManager", secretManager: bip32 },
       networkId: config.networkId,
       walletAddressType: config.walletAddressType,
@@ -68,12 +68,12 @@ export class MeshWallet extends BaseCardanoWallet {
   }
 
   static async fromBip32RootHex(
-    config: Omit<BaseCardanoWalletConfig, "addressSource"> & {
+    config: Omit<CardanoHeadlessWalletConfig, "addressSource"> & {
       hex: string;
     }
-  ): Promise<MeshWallet> {
+  ): Promise<MeshCardanoHeadlessWallet> {
     const bip32 = InMemoryBip32.fromKeyHex(config.hex);
-    return MeshWallet.create({
+    return MeshCardanoHeadlessWallet.create({
       addressSource: { type: "secretManager", secretManager: bip32 },
       networkId: config.networkId,
       walletAddressType: config.walletAddressType,
@@ -83,13 +83,13 @@ export class MeshWallet extends BaseCardanoWallet {
   }
 
   static async fromCredentialSources(
-    config: Omit<BaseCardanoWalletConfig, "addressSource"> & {
+    config: Omit<CardanoHeadlessWalletConfig, "addressSource"> & {
       paymentCredentialSource: CredentialSource;
       stakeCredentialSource?: CredentialSource;
       drepCredentialSource?: CredentialSource;
     }
-  ): Promise<MeshWallet> {
-    return MeshWallet.create({
+  ): Promise<MeshCardanoHeadlessWallet> {
+    return MeshCardanoHeadlessWallet.create({
       addressSource: {
         type: "credentials",
         paymentCredential: config.paymentCredentialSource,

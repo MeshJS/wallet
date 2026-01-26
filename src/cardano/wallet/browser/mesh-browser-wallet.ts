@@ -5,7 +5,7 @@ import { Serialization, Cardano } from "@cardano-sdk/core";
 import { HexBlob } from "@cardano-sdk/util";
 import { fromTxUnspentOutput, fromValue } from "../../../utils/converter";
 
-export class MeshBrowserWallet extends CardanoBrowserWallet {
+export class MeshCardanoBrowserWallet extends CardanoBrowserWallet {
   constructor(walletInstance: ICardanoWallet) {
     super(walletInstance);
   }
@@ -13,9 +13,9 @@ export class MeshBrowserWallet extends CardanoBrowserWallet {
   static async enable(
     walletName: string,
     extensions: Extension[] = []
-  ): Promise<MeshBrowserWallet> {
+  ): Promise<MeshCardanoBrowserWallet> {
     const walletInstance = await super.enable(walletName, extensions);
-    return new MeshBrowserWallet(walletInstance);
+    return new MeshCardanoBrowserWallet(walletInstance);
   }
 
   async getUtxosMesh(): Promise<UTxO[]> {
