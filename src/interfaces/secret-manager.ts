@@ -1,4 +1,4 @@
-import { HARDENED_OFFSET } from "../utils/constants";
+import { HARDENED_OFFSET } from "../cardano/utils/constants";
 import { ISigner } from "./signer";
 
 export type DerivationPath = number[] | string;

@@ -1,5 +1,5 @@
 import { DataSignature } from "@meshsdk/common";
-import { ICardanoWallet } from "../../../interfaces/cardano-wallet";
+import { ICardanoWallet } from "../../interfaces/cardano-wallet";
 
 type Wallet = {
   id: string;

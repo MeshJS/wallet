@@ -1,9 +1,9 @@
 import { Asset, Extension, UTxO } from "@meshsdk/common";
-import { ICardanoWallet } from "../../../interfaces/cardano-wallet";
+import { ICardanoWallet } from "../../interfaces/cardano-wallet";
 import { CardanoBrowserWallet } from "./cardano-browser-wallet";
 import { Serialization, Cardano } from "@cardano-sdk/core";
 import { HexBlob } from "@cardano-sdk/util";
-import { fromTxUnspentOutput, fromValue } from "../../../utils/converter";
+import { fromTxUnspentOutput, fromValue } from "../../utils/converter";
 
 export class MeshCardanoBrowserWallet extends CardanoBrowserWallet {
   constructor(walletInstance: ICardanoWallet) {

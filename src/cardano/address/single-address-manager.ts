@@ -6,7 +6,7 @@ import {
   DEFAULT_DREP_KEY_DERIVATION_PATH,
   DEFAULT_PAYMENT_KEY_DERIVATION_PATH,
   DEFAULT_STAKE_KEY_DERIVATION_PATH,
-} from "../../utils/constants";
+} from "../utils/constants";
 import {
   AddressType,
   CardanoAddress,

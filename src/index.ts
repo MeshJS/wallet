@@ -5,4 +5,4 @@ export * from "./cardano/wallet/browser/cardano-browser-wallet";
 export * from "./cardano/wallet/browser/mesh-browser-wallet";
 export * from "./cardano/wallet/mesh/cardano-base-wallet";
 export * from "./cardano/wallet/mesh/mesh-wallet";
-export * from "./interfaces/cardano-wallet";
+export * from "./cardano/interfaces/cardano-wallet";

@@ -3,8 +3,8 @@ import { Cardano, Serialization, setInConwayEra } from "@cardano-sdk/core";
 import { DataSignature, IFetcher, ISubmitter, UTxO } from "@meshsdk/common";
 
 import { InMemoryBip32 } from "../../../bip32/in-memory-bip32";
-import { ICardanoWallet } from "../../../interfaces/cardano-wallet";
-import { toTxUnspentOutput } from "../../../utils/converter";
+import { ICardanoWallet } from "../../interfaces/cardano-wallet";
+import { toTxUnspentOutput } from "../../utils/converter";
 import { mergeValue } from "../../../utils/value";
 import { AddressType } from "../../address/cardano-address";
 import {

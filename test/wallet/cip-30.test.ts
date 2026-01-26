@@ -2,9 +2,9 @@ import { OfflineFetcher } from "@meshsdk/provider";
 import { MeshCardanoBrowserWallet } from "../../src/cardano/wallet/browser/mesh-browser-wallet";
 import { MeshCardanoHeadlessWallet } from "../../src/cardano/wallet/mesh/mesh-wallet";
 import { AddressType } from "../../src";
-import { fromTxUnspentOutput } from "../../src/utils/converter";
+import { fromTxUnspentOutput } from "../../src/cardano/utils/converter";
 import { Serialization } from "@cardano-sdk/core";
-import { ICardanoWallet } from "../../src/interfaces/cardano-wallet";
+import { ICardanoWallet } from "../../src/cardano/interfaces/cardano-wallet";
 import { CardanoBrowserWallet } from "../../src/cardano/wallet/browser/cardano-browser-wallet";
 
 describe("CIP-30 endpoints", () => {

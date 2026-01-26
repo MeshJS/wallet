@@ -1,7 +1,7 @@
 import { Ed25519PublicKey, Ed25519PublicKeyHex } from "@cardano-sdk/crypto";
 
 import { InMemoryBip32 } from "../../src/bip32/in-memory-bip32";
-import { HARDENED_OFFSET } from "../../src/utils/constants";
+import { HARDENED_OFFSET } from "../../src/cardano/utils/constants";
 
 describe("BaseBip32", () => {
   it("should create a BaseBip32 instance from mnemonic", async () => {

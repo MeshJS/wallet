@@ -5,8 +5,7 @@ import { BaseSigner } from "../../src/signer/base-signer";
 import {
   DEFAULT_PAYMENT_KEY_DERIVATION_PATH,
   DEFAULT_STAKE_KEY_DERIVATION_PATH,
-  HARDENED_OFFSET,
-} from "../../src/utils/constants";
+} from "../../src/cardano/utils/constants";
 
 describe("AddressManager", () => {
   let bip32: InMemoryBip32;

@@ -1,6 +1,6 @@
 import { OfflineFetcher } from "@meshsdk/provider";
 import { MeshCardanoBrowserWallet } from "../../src/cardano/wallet/browser/mesh-browser-wallet";
-import { fromTxUnspentOutput } from "../../src/utils/converter";
+import { fromTxUnspentOutput } from "../../src/cardano/utils/converter";
 import { Serialization } from "@cardano-sdk/core";
 import { CardanoBrowserWallet } from "../../src/cardano/wallet/browser/cardano-browser-wallet";
 

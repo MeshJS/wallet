@@ -19,7 +19,6 @@ export class InMemoryBip32 implements ISecretManager {
   private bip32PrivateKey: Bip32PrivateKey;
 
   private constructor(privateKey: Bip32PrivateKey) {
-    setInConwayEra(true);
     this.bip32PrivateKey = privateKey;
   }
 

@@ -1,6 +1,6 @@
 import { Cardano, Serialization } from "@cardano-sdk/core";
 import { Hash28ByteBase16 } from "@cardano-sdk/crypto";
-import { fromTxUnspentOutput } from "../../src/utils/converter";
+import { fromTxUnspentOutput } from "../../src/cardano/utils/converter";
 
 describe("Miscellaneous", () => {
   it("Cardano Reward Account", () => {
