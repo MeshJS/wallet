@@ -1,4 +1,3 @@
-import { setInConwayEra } from "@cardano-sdk/core";
 import {
   Bip32PrivateKey,
   Bip32PrivateKeyHex,

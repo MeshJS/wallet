@@ -6,7 +6,7 @@ import { OfflineFetcher } from "@meshsdk/provider";
 
 import { InMemoryBip32 } from "../../src";
 import { AddressType } from "../../src/cardano/address/cardano-address";
-import { CardanoHeadlessWallet } from "../../src/cardano/wallet/mesh/cardano-base-wallet";
+import { CardanoHeadlessWallet } from "../../src/cardano/wallet/mesh/cardano-headless-wallet";
 import { MeshCardanoHeadlessWallet } from "../../src/cardano/wallet/mesh/mesh-wallet";
 import { BaseSigner } from "../../src/signer/base-signer";
 

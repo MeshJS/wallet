@@ -11,7 +11,7 @@ import {
 import {
   CardanoHeadlessWallet,
   CardanoHeadlessWalletConfig,
-} from "./cardano-base-wallet";
+} from "./cardano-headless-wallet";
 
 /**
  * MeshCardanoHeadlessWallet provides additional convenience methods on top of CardanoHeadlessWallet,
