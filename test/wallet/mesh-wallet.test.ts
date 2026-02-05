@@ -4,7 +4,7 @@ import { HexBlob } from "@cardano-sdk/util";
 import { DataSignature } from "@meshsdk/common";
 import { OfflineFetcher } from "@meshsdk/provider";
 
-import { InMemoryBip32 } from "../../src";
+import { CardanoInMemoryBip32 } from "../../src";
 import { AddressType } from "../../src/cardano/address/cardano-address";
 import { MeshCardanoHeadlessWallet } from "../../src/cardano/wallet/mesh/mesh-wallet";
 import { BaseSigner } from "../../src/signer/base-signer";
@@ -133,7 +133,7 @@ describe("MeshCardanoHeadlessWallet", () => {
   });
 
   it("should create correct wallet using default derivation paths", async () => {
-    const bip32 = await InMemoryBip32.fromMnemonic(
+    const bip32 = await CardanoInMemoryBip32.fromMnemonic(
       "solution,".repeat(24).split(",").slice(0, 24),
     );
 

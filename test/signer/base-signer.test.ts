@@ -1,12 +1,12 @@
 import { Serialization } from "@cardano-sdk/core";
 
-import { InMemoryBip32 } from "../../src";
+import { CardanoInMemoryBip32 } from "../../src";
 
 const HARDENED_OFFSET = 0x80000000;
 
 describe("BaseSigner", () => {
   it("base wallet signing should produce correct signature", async () => {
-    const bip32 = await InMemoryBip32.fromMnemonic(
+    const bip32 = await CardanoInMemoryBip32.fromMnemonic(
       "globe cupboard camera aim congress cradle decorate enter fringe dove margin witness police coral junk genius harbor fire evolve climb rather broccoli post snack".split(
         " "
       )

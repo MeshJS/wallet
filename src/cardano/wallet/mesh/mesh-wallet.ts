@@ -3,7 +3,7 @@ import { HexBlob } from "@cardano-sdk/util";
 
 import { Asset, UTxO } from "@meshsdk/common";
 
-import { InMemoryBip32 } from "../../../bip32/in-memory-bip32";
+import { CardanoInMemoryBip32 } from "../../../bip32/cardano-in-memory-bip32";
 import {
   AddressManager,
   CredentialSource,
@@ -39,7 +39,7 @@ export class MeshCardanoHeadlessWallet extends CardanoHeadlessWallet {
       password?: string;
     }
   ): Promise<MeshCardanoHeadlessWallet> {
-    const bip32 = await InMemoryBip32.fromMnemonic(
+    const bip32 = await CardanoInMemoryBip32.fromMnemonic(
       config.mnemonic,
       config.password
     );
@@ -57,7 +57,7 @@ export class MeshCardanoHeadlessWallet extends CardanoHeadlessWallet {
       bech32: string;
     }
   ): Promise<MeshCardanoHeadlessWallet> {
-    const bip32 = InMemoryBip32.fromBech32(config.bech32);
+    const bip32 = CardanoInMemoryBip32.fromBech32(config.bech32);
     return MeshCardanoHeadlessWallet.create({
       addressSource: { type: "secretManager", secretManager: bip32 },
       networkId: config.networkId,
@@ -72,7 +72,7 @@ export class MeshCardanoHeadlessWallet extends CardanoHeadlessWallet {
       hex: string;
     }
   ): Promise<MeshCardanoHeadlessWallet> {
-    const bip32 = InMemoryBip32.fromKeyHex(config.hex);
+    const bip32 = CardanoInMemoryBip32.fromKeyHex(config.hex);
     return MeshCardanoHeadlessWallet.create({
       addressSource: { type: "secretManager", secretManager: bip32 },
       networkId: config.networkId,

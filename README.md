@@ -34,12 +34,12 @@ The `CardanoHeadlessWallet` mostly needs a fetcher to function properly, because
 
 If you wanted to blindly sign a transaction (without first attempting to identify IF the wallet needs to sign). Then it is possible by using the more primitive classes that `CardanoHeadlessWallet` or `MeshCardanoHeadlessWallet` was built upon.
 
-#### In Memory BIP32
+#### Cardano In Memory BIP32
 
-The `InMemoryBip32` Class allows users to derive keys from a mnemonic, it is denoted as "In memory" because both the mnemonic and derived keys will be stored in memory. It may be possible to create your own `Bip32` Class that doesn't store anything in memory, as long as the interface stays the same.
+The `CardanoInMemoryBip32` Class allows users to derive keys from a mnemonic, it is denoted as "In memory" because both the mnemonic and derived keys will be stored in memory. It may be possible to create your own `Bip32` Class that doesn't store anything in memory, as long as the interface stays the same.
 
 ```typescript
-const bip32 = await InMemoryBip32.fromMnemonic(
+const bip32 = await CardanoInMemoryBip32.fromMnemonic(
   "globe cupboard camera aim congress cradle decorate enter fringe dove margin witness police coral junk genius harbor fire evolve climb rather broccoli post snack".split(
     " "
   )

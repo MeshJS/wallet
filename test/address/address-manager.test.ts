@@ -1,4 +1,4 @@
-import { InMemoryBip32 } from "../../src/bip32/in-memory-bip32";
+import { CardanoInMemoryBip32 } from "../../src/bip32/cardano-in-memory-bip32";
 import { AddressType } from "../../src/cardano/address/cardano-address";
 import { AddressManager } from "../../src/cardano/address/single-address-manager";
 import { BaseSigner } from "../../src/signer/base-signer";
@@ -8,10 +8,10 @@ import {
 } from "../../src/cardano/utils/constants";
 
 describe("AddressManager", () => {
-  let bip32: InMemoryBip32;
+  let bip32: CardanoInMemoryBip32;
 
   beforeAll(async () => {
-    bip32 = await InMemoryBip32.fromMnemonic(
+    bip32 = await CardanoInMemoryBip32.fromMnemonic(
       "solution,".repeat(24).split(",").slice(0, 24)
     );
   });

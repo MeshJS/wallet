@@ -2,7 +2,7 @@ import { Cardano, Serialization, setInConwayEra } from "@cardano-sdk/core";
 
 import { DataSignature, IFetcher, ISubmitter, UTxO } from "@meshsdk/common";
 
-import { InMemoryBip32 } from "../../../bip32/in-memory-bip32";
+import { CardanoInMemoryBip32 } from "../../../bip32/cardano-in-memory-bip32";
 import { ICardanoWallet } from "../../interfaces/cardano-wallet";
 import { toTxUnspentOutput } from "../../utils/converter";
 import { mergeValue } from "../../utils/value";
@@ -95,7 +95,7 @@ export class CardanoHeadlessWallet implements ICardanoWallet {
       bech32: string;
     }
   ): Promise<CardanoHeadlessWallet> {
-    const bip32 = InMemoryBip32.fromBech32(config.bech32);
+    const bip32 = CardanoInMemoryBip32.fromBech32(config.bech32);
     return CardanoHeadlessWallet.create({
       addressSource: { type: "secretManager", secretManager: bip32 },
       networkId: config.networkId,
@@ -115,7 +115,7 @@ export class CardanoHeadlessWallet implements ICardanoWallet {
       hex: string;
     }
   ): Promise<CardanoHeadlessWallet> {
-    const bip32 = InMemoryBip32.fromKeyHex(config.hex);
+    const bip32 = CardanoInMemoryBip32.fromKeyHex(config.hex);
     return CardanoHeadlessWallet.create({
       addressSource: { type: "secretManager", secretManager: bip32 },
       networkId: config.networkId,
@@ -136,7 +136,7 @@ export class CardanoHeadlessWallet implements ICardanoWallet {
       password?: string;
     }
   ): Promise<CardanoHeadlessWallet> {
-    const bip32 = await InMemoryBip32.fromMnemonic(
+    const bip32 = await CardanoInMemoryBip32.fromMnemonic(
       config.mnemonic,
       config.password
     );
