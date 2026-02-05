@@ -5,6 +5,7 @@ const jestConfig: Config = {
   maxWorkers: 1,
   testEnvironment: "node",
   testMatch: ["**/test/**/*.test.ts"],
+  testPathIgnorePatterns: ["<rootDir>/_backup/"],
   setupFiles: ["dotenv/config"],
   preset: "ts-jest",
   moduleNameMapper: {
