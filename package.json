@@ -54,7 +54,8 @@
     "@types/bn.js": "^5.1.5",
     "base32-encoding": "^1.0.0",
     "bip32": "^5.0.0",
-    "json-bigint": "^1.0.0"
+    "json-bigint": "^1.0.0",
+    "tiny-secp256k1": "^2.2.4"
   },
   "prettier": "./prettier.config.js",
   "publishConfig": {
