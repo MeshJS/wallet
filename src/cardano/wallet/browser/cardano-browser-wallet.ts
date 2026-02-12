@@ -30,6 +30,9 @@ export class CardanoBrowserWallet implements ICardanoWallet {
   constructor(walletInstance: ICardanoWallet) {
     this.walletInstance = walletInstance;
   }
+  async getExtensions(): Promise<{ cip: number }[]> {
+    return this.walletInstance.getExtensions();
+  }
   async getNetworkId(): Promise<number> {
     return this.walletInstance.getNetworkId();
   }
