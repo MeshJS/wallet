@@ -1,6 +1,6 @@
 {
   "name": "@meshsdk/wallet",
-  "version": "2.0.0-beta.4",
+  "version": "2.0.0-beta.5",
   "description": "Wallets - https://meshjs.dev/apis/wallets",
   "main": "./dist/index.cjs",
   "browser": "./dist/index.js",
@@ -18,7 +18,7 @@
     "dist/**"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --format esm,cjs --dts",
+    "build": "tsup",
     "build:demo": "tsup demo/src/main.ts --format esm --outDir demo/dist --clean",
     "dev:demo": "tsup demo/src/main.ts --format esm --outDir demo/dist --watch",
     "preview:demo": "npx serve demo -p 5173",
