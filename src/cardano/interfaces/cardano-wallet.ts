@@ -1,6 +1,7 @@
 import { DataSignature } from "@meshsdk/common";
 
 export interface ICardanoWallet {
+  getExtensions(): Promise<{ cip: number }[]>;
   getNetworkId(): Promise<number>;
   getUtxos(): Promise<string[]>;
   getCollateral(): Promise<string[]>;
