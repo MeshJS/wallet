@@ -1,6 +1,6 @@
 import * as bip32 from "bip32";
 import * as ecc from 'tiny-secp256k1';
-import { mnemonicToSeed } from "bip39";
+import { entropyToMnemonic, mnemonicToSeed } from "bip39";
 
 import {
   DerivationPath,
@@ -20,6 +20,16 @@ export class BitcoinInMemoryBip32 {
     password?: string,
   ): Promise<BitcoinInMemoryBip32> {
     const seed = await mnemonicToSeed(mnemonic.join(" "), password || "");
+    const root = bip32.BIP32Factory(ecc).fromSeed(seed);
+    return new BitcoinInMemoryBip32(root);
+  }
+
+  static async fromEntropy(
+    entropy: string,
+    password?: string,
+  ): Promise<BitcoinInMemoryBip32> {
+    const mnemonic = entropyToMnemonic(entropy);
+    const seed = await mnemonicToSeed(mnemonic, password || "");
     const root = bip32.BIP32Factory(ecc).fromSeed(seed);
     return new BitcoinInMemoryBip32(root);
   }
