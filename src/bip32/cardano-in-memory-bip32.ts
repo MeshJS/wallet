@@ -1,4 +1,3 @@
-import { setInConwayEra } from "@cardano-sdk/core";
 import {
   Bip32PrivateKey,
   Bip32PrivateKeyHex,
@@ -15,7 +14,7 @@ import {
 import { ISigner } from "../interfaces/signer";
 import { BaseSigner } from "../signer/base-signer";
 
-export class InMemoryBip32 implements ISecretManager {
+export class CardanoInMemoryBip32 implements ISecretManager {
   private bip32PrivateKey: Bip32PrivateKey;
 
   private constructor(privateKey: Bip32PrivateKey) {
@@ -25,39 +24,39 @@ export class InMemoryBip32 implements ISecretManager {
   static async fromMnemonic(
     mnemonic: string[],
     password?: string,
-  ): Promise<InMemoryBip32> {
+  ): Promise<CardanoInMemoryBip32> {
     await ready();
     const entropy = mnemonicToEntropy(mnemonic.join(" "));
     const bip32PrivateKey = Bip32PrivateKey.fromBip39Entropy(
       Buffer.from(entropy, "hex"),
       password || "",
     );
-    return new InMemoryBip32(bip32PrivateKey);
+    return new CardanoInMemoryBip32(bip32PrivateKey);
   }
 
   static async fromEntropy(
     entropy: string,
     password?: string,
-  ): Promise<InMemoryBip32> {
+  ): Promise<CardanoInMemoryBip32> {
     await ready();
     const bip32PrivateKey = Bip32PrivateKey.fromBip39Entropy(
       Buffer.from(entropy, "hex"),
       password || "",
     );
-    return new InMemoryBip32(bip32PrivateKey);
+    return new CardanoInMemoryBip32(bip32PrivateKey);
   }
 
-  static fromKeyHex(keyHex: string): InMemoryBip32 {
+  static fromKeyHex(keyHex: string): CardanoInMemoryBip32 {
     const bip32PrivateKey = Bip32PrivateKey.fromHex(
       keyHex as Bip32PrivateKeyHex,
     );
-    return new InMemoryBip32(bip32PrivateKey);
+    return new CardanoInMemoryBip32(bip32PrivateKey);
   }
 
-  static fromBech32(bech32: string): InMemoryBip32 {
+  static fromBech32(bech32: string): CardanoInMemoryBip32 {
     const bech32DecodedBytes = BaseEncoding.bech32.decodeToBytes(bech32).bytes;
     const bip32PrivateKey = Bip32PrivateKey.fromBytes(bech32DecodedBytes);
-    return new InMemoryBip32(bip32PrivateKey);
+    return new CardanoInMemoryBip32(bip32PrivateKey);
   }
 
   /**

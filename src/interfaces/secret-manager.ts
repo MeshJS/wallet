@@ -9,9 +9,6 @@ export interface ISecretManager {
 }
 
 export const derivationPathVectorFromString = (path: string): number[] => {
-  if (!/^m?\/\d+(\/\d+)*$/.test(path)) {
-    throw new Error(`Invalid derivation path: ${path}`);
-  }
   let pathString = path;
   if (pathString.startsWith("m/")) {
     pathString = pathString.slice(2);

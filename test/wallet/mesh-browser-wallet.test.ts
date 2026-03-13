@@ -1,10 +1,12 @@
-import { OfflineFetcher } from "@meshsdk/provider";
-import { MeshCardanoBrowserWallet } from "../../src/cardano/wallet/browser/mesh-browser-wallet";
-import { fromTxUnspentOutput } from "../../src/cardano/utils/converter";
 import { Serialization } from "@cardano-sdk/core";
-import { CardanoBrowserWallet } from "../../src/cardano/wallet/browser/cardano-browser-wallet";
 
-describe("CIP-30 endpoints", () => {
+import { OfflineFetcher } from "@meshsdk/provider";
+
+import { fromTxUnspentOutput } from "../../src/cardano/utils/converter";
+import { CardanoBrowserWallet } from "../../src/cardano/wallet/browser/cardano-browser-wallet";
+import { MeshCardanoBrowserWallet } from "../../src/cardano/wallet/browser/mesh-browser-wallet";
+
+describe("Mesh Browser Wallet", () => {
   let meshCardanoBrowserWallet: MeshCardanoBrowserWallet;
   const offlineFetcher = new OfflineFetcher();
 
@@ -16,9 +18,9 @@ describe("CIP-30 endpoints", () => {
   offlineFetcher.addUTxOs(
     utxosHex.map((utxo) => {
       return fromTxUnspentOutput(
-        Serialization.TransactionUnspentOutput.fromCbor(utxo)
+        Serialization.TransactionUnspentOutput.fromCbor(utxo),
       );
-    })
+    }),
   );
 
   beforeEach(async () => {
@@ -257,7 +259,7 @@ describe("CIP-30 endpoints", () => {
     };
 
     meshCardanoBrowserWallet = new MeshCardanoBrowserWallet(
-      await CardanoBrowserWallet.enable("eternl")
+      await CardanoBrowserWallet.enable("eternl"),
     );
   });
   it("Wallet balance test", async () => {
@@ -352,12 +354,13 @@ describe("CIP-30 endpoints", () => {
     const browserChangeAddress =
       await meshCardanoBrowserWallet.getChangeAddressBech32();
     expect(browserChangeAddress).toBe(
-      "addr_test1qpvx0sacufuypa2k4sngk7q40zc5c4npl337uusdh64kv0uafhxhu32dys6pvn6wlw8dav6cmp4pmtv7cc3yel9uu0nq93swx9"
+      "addr_test1qpvx0sacufuypa2k4sngk7q40zc5c4npl337uusdh64kv0uafhxhu32dys6pvn6wlw8dav6cmp4pmtv7cc3yel9uu0nq93swx9",
     );
   });
 
   it("Wallet collateral test", async () => {
-    const browserCollateral = await meshCardanoBrowserWallet.getCollateralMesh();
+    const browserCollateral =
+      await meshCardanoBrowserWallet.getCollateralMesh();
     expect(browserCollateral).toEqual([
       {
         input: {
