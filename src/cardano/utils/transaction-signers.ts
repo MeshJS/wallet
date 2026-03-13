@@ -191,7 +191,11 @@ function getRequiredSignersFromWithdrawals(
 
   if (withdrawals) {
     for (const rewardAccount of withdrawals.keys()) {
-      requiredSigners.add(Cardano.RewardAccount.toHash(rewardAccount));
+      const address = Cardano.Address.fromBech32(rewardAccount);
+      const addressType = address.getType();
+      if (addressType === Cardano.AddressType.RewardKey) {
+        requiredSigners.add(Cardano.RewardAccount.toHash(rewardAccount));
+      }
     }
   }
 
