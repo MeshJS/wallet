@@ -118,6 +118,18 @@ describe("MeshCardanoHeadlessWallet", () => {
         ],
       },
     },
+    {
+      input: {txHash: "4f6e05cf49763a5a90a7ab866267ec3dd58aee8e28029f714ae311c3d8cb284f", outputIndex: 0 },
+      output: {
+        address: "addr_test1qqzgg5pcaeyea69uptl9da5g7fajm4m0yvxndx9f4lxpkehqgezy0s04rtdwlc0tlvxafpdrfxnsg7ww68ge3j7l0lnszsw2wt",
+        amount: [
+          {
+            unit: "lovelace",
+            quantity: "9811850675",
+          },
+        ]
+      }
+    }
   ]);
 
   it("should create correct wallet from mnemonic", async () => {
@@ -328,4 +340,18 @@ describe("MeshCardanoHeadlessWallet", () => {
         "845846a2012767616464726573735839005867c3b8e27840f556ac268b781578b14c5661fc63ee720dbeab663f9d4dcd7e454d2434164f4efb8edeb358d86a1dad9ec6224cfcbce3e6a166686173686564f441ab58405fdb1b2006cba85db90a2edb254317ade112d72883d9f28956fc3337104a6ee74ca2e252163c2f790ca23e0d3c96205e0bf9d460cca4fc325f49db65b8741d0b",
     });
   });
+
+  it("should sign transaction with matching withdrawals", async () => {
+    const wallet = await MeshCardanoHeadlessWallet.fromMnemonic({
+      mnemonic: "summer,".repeat(24).split(",").slice(0, 24),
+      networkId: 0,
+      walletAddressType: AddressType.Base,
+      fetcher: offlineFetcher,
+    });
+
+    const tx = "84a600d90102818258204f6e05cf49763a5a90a7ab866267ec3dd58aee8e28029f714ae311c3d8cb284f0001818258390004845038ee499ee8bc0afe56f688f27b2dd76f230d3698a9afcc1b66e0464447c1f51adaefe1ebfb0dd485a349a70479ced1d198cbdf7fe71b00000002c006777f021a00029f95031a0703ff2f05a1581de0e0464447c1f51adaefe1ebfb0dd485a349a70479ced1d198cbdf7fe71a773421610801a0f5f6";
+    const signature = await wallet.signTx(tx);
+    const witnessSet = Serialization.TransactionWitnessSet.fromCbor(HexBlob(signature));
+    expect(witnessSet.vkeys()?.size()).toBe(2);
+  })
 });
