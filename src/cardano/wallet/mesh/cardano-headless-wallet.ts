@@ -183,6 +183,14 @@ export class CardanoHeadlessWallet implements ICardanoWallet {
   }
 
   /**
+   * Get the list of extensions enabled for this wallet.
+   * @returns {Promise<{ cip: number }[]>} A promise that resolves to an array of enabled extensions
+   */
+  async getExtensions(): Promise<{ cip: number }[]> {
+    return [];
+  }
+
+  /**
    * Get the network ID.
    * @returns {number} The network ID
    */
