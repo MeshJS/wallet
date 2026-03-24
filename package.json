@@ -19,9 +19,9 @@
   ],
   "scripts": {
     "build": "tsup",
-    "build:demo": "tsup demo/src/main.ts --format esm --outDir demo/dist --clean",
-    "dev:demo": "tsup demo/src/main.ts --format esm --outDir demo/dist --watch",
-    "preview:demo": "npx serve demo -p 5173",
+    "build:demo": "npm --prefix demo run build",
+    "dev:demo": "npm --prefix demo run dev",
+    "preview:demo": "npm --prefix demo run start",
     "build:docs": "typedoc src/index.ts --json ../../apps/docs/src/data/mesh-wallets.json",
     "clean": "rm -rf .turbo && rm -rf dist && rm -rf node_modules",
     "dev": "tsup src/index.ts --format esm,cjs --watch --dts",
