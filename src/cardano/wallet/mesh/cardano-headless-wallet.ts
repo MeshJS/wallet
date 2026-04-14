@@ -3,17 +3,17 @@ import { Cardano, Serialization, setInConwayEra } from "@cardano-sdk/core";
 import { DataSignature, IFetcher, ISubmitter, UTxO } from "@meshsdk/common";
 
 import { CardanoInMemoryBip32 } from "../../../bip32/cardano-in-memory-bip32";
-import { ICardanoWallet } from "../../interfaces/cardano-wallet";
-import { toTxUnspentOutput } from "../../utils/converter";
-import { mergeValue } from "../../utils/value";
 import { AddressType } from "../../address/cardano-address";
 import {
   AddressManager,
   AddressSource,
   CredentialSource,
 } from "../../address/single-address-manager";
+import { ICardanoWallet } from "../../interfaces/cardano-wallet";
 import { CardanoSigner } from "../../signer/cardano-signer";
+import { toTxUnspentOutput } from "../../utils/converter";
 import { getTransactionRequiredSigners } from "../../utils/transaction-signers";
+import { mergeValue } from "../../utils/value";
 
 export type { CredentialSource };
 
@@ -58,7 +58,7 @@ export class CardanoHeadlessWallet implements ICardanoWallet {
     addressManager: AddressManager,
     walletAddressType: WalletAddressType,
     fetcher?: IFetcher,
-    submitter?: ISubmitter
+    submitter?: ISubmitter,
   ) {
     setInConwayEra(true);
     this.networkId = networkId;
@@ -69,7 +69,7 @@ export class CardanoHeadlessWallet implements ICardanoWallet {
   }
 
   static async create(
-    config: CardanoHeadlessWalletConfig
+    config: CardanoHeadlessWalletConfig,
   ): Promise<CardanoHeadlessWallet> {
     const addressManager = await AddressManager.create({
       addressSource: config.addressSource,
@@ -81,7 +81,7 @@ export class CardanoHeadlessWallet implements ICardanoWallet {
       addressManager,
       config.walletAddressType,
       config.fetcher,
-      config.submitter
+      config.submitter,
     );
   }
 
@@ -93,7 +93,7 @@ export class CardanoHeadlessWallet implements ICardanoWallet {
   static async fromBip32Root(
     config: Omit<CardanoHeadlessWalletConfig, "addressSource"> & {
       bech32: string;
-    }
+    },
   ): Promise<CardanoHeadlessWallet> {
     const bip32 = CardanoInMemoryBip32.fromBech32(config.bech32);
     return CardanoHeadlessWallet.create({
@@ -113,7 +113,7 @@ export class CardanoHeadlessWallet implements ICardanoWallet {
   static async fromBip32RootHex(
     config: Omit<CardanoHeadlessWalletConfig, "addressSource"> & {
       hex: string;
-    }
+    },
   ): Promise<CardanoHeadlessWallet> {
     const bip32 = CardanoInMemoryBip32.fromKeyHex(config.hex);
     return CardanoHeadlessWallet.create({
@@ -134,11 +134,11 @@ export class CardanoHeadlessWallet implements ICardanoWallet {
     config: Omit<CardanoHeadlessWalletConfig, "addressSource"> & {
       mnemonic: string[];
       password?: string;
-    }
+    },
   ): Promise<CardanoHeadlessWallet> {
     const bip32 = await CardanoInMemoryBip32.fromMnemonic(
       config.mnemonic,
-      config.password
+      config.password,
     );
     return CardanoHeadlessWallet.create({
       addressSource: { type: "secretManager", secretManager: bip32 },
@@ -154,7 +154,7 @@ export class CardanoHeadlessWallet implements ICardanoWallet {
       paymentCredentialSource: CredentialSource;
       stakeCredentialSource?: CredentialSource;
       drepCredentialSource?: CredentialSource;
-    }
+    },
   ): Promise<CardanoHeadlessWallet> {
     return CardanoHeadlessWallet.create({
       addressSource: {
@@ -289,7 +289,7 @@ export class CardanoHeadlessWallet implements ICardanoWallet {
   async getUsedAddresses(): Promise<string[]> {
     //TODO: Should iterate over all utxos to get the used addresses
     const address = await this.addressManager.getNextAddress(
-      this.walletAddressType
+      this.walletAddressType,
     );
     return [address.getAddressHex()];
   }
@@ -306,7 +306,7 @@ export class CardanoHeadlessWallet implements ICardanoWallet {
    */
   async getUnusedAddresses(): Promise<string[]> {
     const address = await this.addressManager.getNextAddress(
-      this.walletAddressType
+      this.walletAddressType,
     );
     return [address.getAddressHex()];
   }
@@ -323,7 +323,7 @@ export class CardanoHeadlessWallet implements ICardanoWallet {
    */
   async getChangeAddress(): Promise<string> {
     const address = await this.addressManager.getChangeAddress(
-      this.walletAddressType
+      this.walletAddressType,
     );
     return address.getAddressHex();
   }
@@ -355,20 +355,19 @@ export class CardanoHeadlessWallet implements ICardanoWallet {
   async signTx(tx: string, partialSign: boolean = false): Promise<string> {
     if (!this.fetcher) {
       throw new Error(
-        "[CardanoWallet] No fetcher provided, wallet sign tx does not behave correctly without a fetcher to resolve inputs. If you need to blindly sign a tx, use the CardanoSigner class directly."
+        "[CardanoWallet] No fetcher provided, wallet sign tx does not behave correctly without a fetcher to resolve inputs. If you need to blindly sign a tx, use the CardanoSigner class directly.",
       );
     }
     const transaction = Serialization.Transaction.fromCbor(
-      Serialization.TxCBOR(tx)
+      Serialization.TxCBOR(tx),
     );
     const requiredSigners = await getTransactionRequiredSigners(
       transaction,
-      this.fetcher
+      this.fetcher,
     );
 
-    const signersMap = await this.addressManager.getCredentialsSigners(
-      requiredSigners
-    );
+    const signersMap =
+      await this.addressManager.getCredentialsSigners(requiredSigners);
 
     if (!partialSign) {
       if (requiredSigners.size !== signersMap.size) {
@@ -384,7 +383,7 @@ export class CardanoHeadlessWallet implements ICardanoWallet {
     let targetAddressBech32 = addressBech32;
     if (!targetAddressBech32) {
       const address = await this.addressManager.getNextAddress(
-        this.walletAddressType
+        this.walletAddressType,
       );
       targetAddressBech32 = address.getAddressBech32();
     }
@@ -408,13 +407,13 @@ export class CardanoHeadlessWallet implements ICardanoWallet {
     }
 
     const signersMap = await this.addressManager.getCredentialsSigners(
-      new Set([credentialHash])
+      new Set([credentialHash]),
     );
     const signer = signersMap.get(credentialHash);
 
     if (!signer) {
       throw new Error(
-        `[CardanoWallet] No signer found for credential hash: ${credentialHash}`
+        `[CardanoWallet] No signer found for credential hash: ${credentialHash}`,
       );
     }
 

@@ -38,7 +38,6 @@ describe("Bitcoin Headless Wallet", () => {
   });
 
   it("should derive a v0 segwit address", () => {
-
     const pubkeyHex = bip32.getPublicKey("m/84'/1'/0'/0/0");
     const pubkeyHash = hash160(pubkeyHex);
     const words = bech32.toWords(pubkeyHash);
@@ -48,7 +47,6 @@ describe("Bitcoin Headless Wallet", () => {
   });
 
   it("should derive an ordinals taproot address that matches sats-connect", () => {
-
     const pubkeyHex = bip32.getPublicKey("m/86'/1'/0'/0/0");
     const pubkey = Buffer.from(pubkeyHex, "hex");
     const internalXOnlyPubkey = pubkey.subarray(1, 33);
