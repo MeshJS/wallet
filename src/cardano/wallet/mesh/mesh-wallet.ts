@@ -8,6 +8,7 @@ import {
   AddressManager,
   CredentialSource,
 } from "../../address/single-address-manager";
+import { fromTxUnspentOutput } from "../../utils/converter";
 import {
   CardanoHeadlessWallet,
   CardanoHeadlessWalletConfig,
@@ -18,7 +19,9 @@ import {
  * such as returning results in Mesh-compatible formats and Bech32 addresses.
  */
 export class MeshCardanoHeadlessWallet extends CardanoHeadlessWallet {
-  static async create(config: CardanoHeadlessWalletConfig): Promise<MeshCardanoHeadlessWallet> {
+  static async create(
+    config: CardanoHeadlessWalletConfig,
+  ): Promise<MeshCardanoHeadlessWallet> {
     const addressManager = await AddressManager.create({
       addressSource: config.addressSource,
       networkId: config.networkId,
@@ -29,7 +32,7 @@ export class MeshCardanoHeadlessWallet extends CardanoHeadlessWallet {
       addressManager,
       config.walletAddressType,
       config.fetcher,
-      config.submitter
+      config.submitter,
     );
   }
 
@@ -37,11 +40,11 @@ export class MeshCardanoHeadlessWallet extends CardanoHeadlessWallet {
     config: Omit<CardanoHeadlessWalletConfig, "addressSource"> & {
       mnemonic: string[];
       password?: string;
-    }
+    },
   ): Promise<MeshCardanoHeadlessWallet> {
     const bip32 = await CardanoInMemoryBip32.fromMnemonic(
       config.mnemonic,
-      config.password
+      config.password,
     );
     return MeshCardanoHeadlessWallet.create({
       addressSource: { type: "secretManager", secretManager: bip32 },
@@ -55,7 +58,7 @@ export class MeshCardanoHeadlessWallet extends CardanoHeadlessWallet {
   static async fromBip32Root(
     config: Omit<CardanoHeadlessWalletConfig, "addressSource"> & {
       bech32: string;
-    }
+    },
   ): Promise<MeshCardanoHeadlessWallet> {
     const bip32 = CardanoInMemoryBip32.fromBech32(config.bech32);
     return MeshCardanoHeadlessWallet.create({
@@ -70,7 +73,7 @@ export class MeshCardanoHeadlessWallet extends CardanoHeadlessWallet {
   static async fromBip32RootHex(
     config: Omit<CardanoHeadlessWalletConfig, "addressSource"> & {
       hex: string;
-    }
+    },
   ): Promise<MeshCardanoHeadlessWallet> {
     const bip32 = CardanoInMemoryBip32.fromKeyHex(config.hex);
     return MeshCardanoHeadlessWallet.create({
@@ -87,7 +90,7 @@ export class MeshCardanoHeadlessWallet extends CardanoHeadlessWallet {
       paymentCredentialSource: CredentialSource;
       stakeCredentialSource?: CredentialSource;
       drepCredentialSource?: CredentialSource;
-    }
+    },
   ): Promise<MeshCardanoHeadlessWallet> {
     return MeshCardanoHeadlessWallet.create({
       addressSource: {
@@ -135,29 +138,12 @@ export class MeshCardanoHeadlessWallet extends CardanoHeadlessWallet {
     if (!this.fetcher) {
       throw new Error("[CardanoWallet] No fetcher provided");
     }
-    const utxos = await this.fetchAccountUtxos();
-    const getUtxoLovelaceValue = (utxo: UTxO) => {
-      const value = utxo.output.amount;
-      let lovelace = 0;
-      for (const asset of value) {
-        if (asset.unit === "lovelace" || asset.unit === "") {
-          lovelace = parseInt(asset.quantity);
-        }
-      }
-      return lovelace;
-    };
-    // sort utxos by lovelace value ascending
-    const sortedUtxos = utxos.sort(
-      (a, b) => getUtxoLovelaceValue(a) - getUtxoLovelaceValue(b)
+    const collaterals = await this.getCollateral();
+    return collaterals.map((coll) =>
+      fromTxUnspentOutput(
+        Serialization.TransactionUnspentOutput.fromCbor(HexBlob(coll)),
+      ),
     );
-
-    // return the smallest utxo with at least 5 ADA
-    for (const utxo of sortedUtxos) {
-      if (getUtxoLovelaceValue(utxo) >= 5_000_000) {
-        return [utxo];
-      }
-    }
-    return [];
   }
 
   /**
@@ -257,14 +243,14 @@ export class MeshCardanoHeadlessWallet extends CardanoHeadlessWallet {
    */
   async signTxReturnFullTx(
     tx: string,
-    partialSign: boolean = false
+    partialSign: boolean = false,
   ): Promise<string> {
     const witnessCbor = await this.signTx(tx, partialSign);
     const addedWitnesses = Serialization.TransactionWitnessSet.fromCbor(
-      HexBlob(witnessCbor)
+      HexBlob(witnessCbor),
     );
     const transaction = Serialization.Transaction.fromCbor(
-      Serialization.TxCBOR(tx)
+      Serialization.TxCBOR(tx),
     );
     let witnessSet = transaction.witnessSet();
     let witnessSetVkeys = witnessSet.vkeys();
@@ -278,13 +264,13 @@ export class MeshCardanoHeadlessWallet extends CardanoHeadlessWallet {
     witnessSet.setVkeys(
       Serialization.CborSet.fromCore(
         witnessSetVkeysValues.map((vkw) => vkw.toCore()),
-        Serialization.VkeyWitness.fromCore
-      )
+        Serialization.VkeyWitness.fromCore,
+      ),
     );
     const signedTx = new Serialization.Transaction(
       transaction.body(),
       witnessSet,
-      transaction.auxiliaryData()
+      transaction.auxiliaryData(),
     );
     return signedTx.toCbor();
   }
