@@ -1,7 +1,7 @@
 import { Cardano, Serialization } from "@cardano-sdk/core";
 import { HexBlob } from "@cardano-sdk/util";
 
-import { Asset, UTxO } from "@meshsdk/common";
+import { Asset, MeshValue, UTxO } from "@meshsdk/common";
 
 import { CardanoInMemoryBip32 } from "../../../bip32/cardano-in-memory-bip32";
 import {
@@ -159,7 +159,9 @@ export class MeshCardanoHeadlessWallet extends CardanoHeadlessWallet {
       throw new Error("[CardanoWallet] No fetcher provided");
     }
     const utxos = await this.fetchAccountUtxos();
-    return utxos.map((utxo) => utxo.output.amount).flat();
+    const values = utxos.map((utxo) => utxo.output.amount).flat();
+    const meshValue = MeshValue.fromAssets(values);
+    return meshValue.toAssets();
   }
 
   /**
