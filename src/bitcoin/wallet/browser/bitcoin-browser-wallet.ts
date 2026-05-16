@@ -73,6 +73,14 @@ export class BitcoinBrowserWallet implements IBitcoinWallet {
     return this.walletInstance.signMessage(address, message, protocol);
   }
 
+  verifyMessage(
+    address: string,
+    message: string,
+    signature: string,
+  ): Promise<boolean> {
+    return this.walletInstance.verifyMessage(address, message, signature);
+  }
+
   signTransfer(
     recipients: { address: string; amount: number }[],
   ): Promise<string> {

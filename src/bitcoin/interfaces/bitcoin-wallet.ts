@@ -51,6 +51,12 @@ export type BitcoinSignature = {
   protocol: MessageSigningProtocols;
 };
 
+export type VerifyMessageResult = {
+  valid: boolean;
+  recoveredPublicKey?: string;
+  reason?: string;
+};
+
 export interface IBitcoinWallet {
   getNetwork(): Promise<"Mainnet" | "Testnet4">;
   getAddresses(addressPurposes: AddressPurpose[]): Promise<BitcoinAddress[]>;
@@ -61,6 +67,11 @@ export interface IBitcoinWallet {
     message: string,
     protocol?: MessageSigningProtocols,
   ): Promise<BitcoinSignature>;
+  verifyMessage(
+    address: string,
+    message: string,
+    signature: string,
+  ): Promise<boolean>;
   signTransfer(
     recipients: {
       address: string;

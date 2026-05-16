@@ -8,6 +8,8 @@ import {
   IBitcoinWallet,
   MessageSigningProtocols,
 } from "../../../interfaces/bitcoin-wallet";
+import { networkFromName } from "../../../address/bitcoin-address";
+import { verifyBitcoinMessage } from "../../mesh/bitcoin-headless-wallet";
 
 /**
  * Shape of the Xverse `BitcoinProvider` reachable via `window.XverseProviders.BitcoinProvider`.
@@ -266,6 +268,32 @@ export class XverseAdapter implements IBitcoinWallet {
       address: result.address,
       protocol: result.protocol ?? protocol ?? MessageSigningProtocols.ECDSA,
     };
+  }
+
+  /**
+   * Verify a Bitcoin signed-message locally. Trustless — does not call the extension.
+   * Supports the ECDSA 65-byte recoverable format. BIP-322 signatures (which Xverse
+   * may produce for Taproot addresses) throw a clear "not yet supported" error rather
+   * than silently returning false, so callers can distinguish "invalid" from "unsupported".
+   */
+  async verifyMessage(
+    address: string,
+    message: string,
+    signature: string,
+  ): Promise<boolean> {
+    const decoded = Buffer.from(signature, "base64");
+    if (decoded.length !== 65) {
+      throw new Error(
+        "[XverseAdapter] verifyMessage only supports ECDSA (65-byte) signatures. BIP-322 verification is not yet implemented.",
+      );
+    }
+    const networkName = await this.getNetwork();
+    return verifyBitcoinMessage(
+      address,
+      message,
+      signature,
+      networkFromName(networkName),
+    ).valid;
   }
 
   /**

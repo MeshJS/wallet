@@ -18,6 +18,7 @@ export type {
   BitcoinBalance,
   BitcoinSignature,
   IBitcoinWallet,
+  VerifyMessageResult,
 } from "./bitcoin/interfaces/bitcoin-wallet";
 export * from "./bitcoin/interfaces/bitcoin-provider";
 export * from "./bitcoin/types";

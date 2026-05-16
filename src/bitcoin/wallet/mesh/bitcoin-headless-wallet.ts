@@ -17,6 +17,7 @@ import {
   BitcoinSignature,
   IBitcoinWallet,
   MessageSigningProtocols,
+  VerifyMessageResult,
 } from "../../interfaces/bitcoin-wallet";
 import {
   ECPair,
@@ -191,18 +192,8 @@ export class BitcoinHeadlessWallet implements IBitcoinWallet {
       network: this.bitcoinNetwork,
     });
 
-    // Bitcoin signed-message standard: hash256( varInt(magicLen) || magic || varInt(msgLen) || msg )
-    // The magic prefix is required for any external verifier (Electrum, Sparrow, block
-    // explorers, bitcoinjs-message) to accept the signature.
-    const messageBuffer = Buffer.from(message, "utf8");
-    const magic = Buffer.from("Bitcoin Signed Message:\n", "utf8");
-    const bufferToHash = Buffer.concat([
-      varIntBuffer(magic.length),
-      magic,
-      varIntBuffer(messageBuffer.length),
-      messageBuffer,
-    ]);
-    const hash = bitcoin.crypto.hash256(bufferToHash);
+    // Bitcoin signed-message standard preimage (see bitcoinMessageHash helper).
+    const hash = bitcoinMessageHash(message);
 
     // Produce a 65-byte compact recoverable signature: [header || r || s].
     // Header = 27 + 4 (compressed) + recoveryId  →  0x1f or 0x20 for compressed P2PKH-style.
@@ -219,6 +210,15 @@ export class BitcoinHeadlessWallet implements IBitcoinWallet {
       address,
       protocol: MessageSigningProtocols.ECDSA,
     };
+  }
+
+  async verifyMessage(
+    address: string,
+    message: string,
+    signature: string,
+  ): Promise<boolean> {
+    return verifyBitcoinMessage(address, message, signature, this.bitcoinNetwork)
+      .valid;
   }
 
   async signTransfer(
@@ -568,6 +568,121 @@ function findRecoveryId(hash: Buffer, sig: Buffer, expectedPubkey: Buffer): 0 | 
   throw new Error(
     "[BitcoinHeadlessWallet] Failed to determine recovery id for signature",
   );
+}
+
+/**
+ * Compute the Bitcoin signed-message hash: hash256(varInt(magicLen) || magic || varInt(msgLen) || msg).
+ * Shared by signMessage and verifyBitcoinMessage so both sides agree on the preimage.
+ */
+function bitcoinMessageHash(message: string): Buffer {
+  const messageBuffer = Buffer.from(message, "utf8");
+  const magic = Buffer.from("Bitcoin Signed Message:\n", "utf8");
+  const preimage = Buffer.concat([
+    varIntBuffer(magic.length),
+    magic,
+    varIntBuffer(messageBuffer.length),
+    messageBuffer,
+  ]);
+  return bitcoin.crypto.hash256(preimage);
+}
+
+/**
+ * Verify a Bitcoin signed-message (BIP-137 style, 65-byte compact recoverable ECDSA, base64).
+ *
+ * Cross-type acceptance: recovers the pubkey from the signature and matches against
+ * P2PKH / P2SH-P2WPKH / P2WPKH / P2TR (BIP-86) addresses derived from that pubkey.
+ * The header byte selects compression + recoveryId per BIP-137 but does not constrain
+ * which address type the caller may verify against — matches how Sparrow/Leather behave.
+ */
+export function verifyBitcoinMessage(
+  address: string,
+  message: string,
+  signature: string,
+  network: Network,
+): VerifyMessageResult {
+  let decoded: Buffer;
+  try {
+    decoded = Buffer.from(signature, "base64");
+    // Buffer.from with base64 silently drops invalid chars; re-encode and compare
+    // to catch garbage like "not-a-real-signature".
+    if (decoded.toString("base64").replace(/=+$/, "") !==
+        signature.replace(/=+$/, "")) {
+      return { valid: false, reason: "signature is not valid base64" };
+    }
+  } catch {
+    return { valid: false, reason: "signature is not valid base64" };
+  }
+
+  if (decoded.length !== 65) {
+    return {
+      valid: false,
+      reason: `signature must be 65 bytes, got ${decoded.length}`,
+    };
+  }
+
+  const header = decoded[0]!;
+  if (header < 27 || header > 42) {
+    return {
+      valid: false,
+      reason: `signature header byte ${header} outside BIP-137 range 27..42`,
+    };
+  }
+
+  const compressed = header >= 31;
+  const recoveryId = ((header - 27) & 3) as 0 | 1 | 2 | 3;
+  const rawSig = decoded.subarray(1);
+  const hash = bitcoinMessageHash(message);
+
+  const recovered = ecc.recover(hash, rawSig, recoveryId, compressed);
+  if (!recovered) {
+    return { valid: false, reason: "failed to recover public key from signature" };
+  }
+  const recoveredPubkey = Buffer.from(recovered);
+
+  if (!ecc.verify(hash, recoveredPubkey, rawSig)) {
+    return { valid: false, reason: "signature does not verify against recovered pubkey" };
+  }
+
+  const candidates: string[] = [];
+  try {
+    candidates.push(
+      bitcoin.payments.p2pkh({ pubkey: recoveredPubkey, network }).address!,
+    );
+  } catch { /* skip */ }
+  if (compressed) {
+    try {
+      candidates.push(
+        bitcoin.payments.p2wpkh({ pubkey: recoveredPubkey, network }).address!,
+      );
+    } catch { /* skip */ }
+    try {
+      const p2wpkh = bitcoin.payments.p2wpkh({ pubkey: recoveredPubkey, network });
+      candidates.push(
+        bitcoin.payments.p2sh({ redeem: p2wpkh, network }).address!,
+      );
+    } catch { /* skip */ }
+    try {
+      candidates.push(
+        bitcoin.payments.p2tr({
+          internalPubkey: toXOnly(recoveredPubkey),
+          network,
+        }).address!,
+      );
+    } catch { /* skip */ }
+  }
+
+  if (candidates.includes(address)) {
+    return {
+      valid: true,
+      recoveredPublicKey: recoveredPubkey.toString("hex"),
+    };
+  }
+
+  return {
+    valid: false,
+    reason: "address does not match any standard form of the recovered pubkey",
+    recoveredPublicKey: recoveredPubkey.toString("hex"),
+  };
 }
 
 function varIntBuffer(n: number): Buffer {
