@@ -1,13 +1,13 @@
 import type { BIP32Interface } from "bip32";
 import type { Network, Psbt, Signer } from "bitcoinjs-lib";
 
-import { BitcoinAddressManager } from "../../address/bitcoin-address-manager";
 import {
   BitcoinNetworkName,
   DerivedBitcoinAddress,
   networkFromName,
   toXOnly,
 } from "../../address/bitcoin-address";
+import { BitcoinAddressManager } from "../../address/bitcoin-address-manager";
 import { IBitcoinProvider } from "../../interfaces/bitcoin-provider";
 import {
   AddressPurpose,
@@ -19,22 +19,15 @@ import {
   MessageSigningProtocols,
   VerifyMessageResult,
 } from "../../interfaces/bitcoin-wallet";
-import {
-  ECPair,
-  bip32,
-  bip39,
-  bitcoin,
-  ecc,
-} from "../core/bitcoin-core";
+import { RecoveryId } from "../../types/recoveryId";
+import { TransactionsInfo } from "../../types/transactions-info";
+import { UTxO } from "../../types/utxo";
+import { bip32, bip39, bitcoin, ecc, ECPair } from "../core/bitcoin-core";
 
 export interface BitcoinHeadlessWalletConfig {
-  /** Network this wallet operates on. */
   network: BitcoinNetworkName;
-  /** Optional provider for UTXO/fee fetching and broadcast. */
   provider?: IBitcoinProvider;
-  /** Optional BIP-39 passphrase. */
   password?: string;
-  /** Optional account index (default 0). */
   account?: number;
 }
 
@@ -123,6 +116,39 @@ export class BitcoinHeadlessWallet implements IBitcoinWallet {
     return BitcoinHeadlessWallet.create({ ...config, root });
   }
 
+  static async fromPrivateKey(
+    config: BitcoinHeadlessWalletConfig & { privateKey: string },
+  ): Promise<BitcoinHeadlessWallet> {
+    const bitcoinNetwork = networkFromName(config.network);
+
+    let privKeyBuffer: Buffer;
+
+    if (/^[0-9a-fA-F]{64}$/.test(config.privateKey)) {
+      privKeyBuffer = Buffer.from(config.privateKey, "hex");
+    } else {
+      try {
+        const pair = ECPair.fromWIF(config.privateKey, bitcoinNetwork);
+        if (!pair.privateKey) {
+          throw new Error("WIF decoded but contained no private key bytes");
+        }
+        privKeyBuffer = Buffer.from(pair.privateKey);
+      } catch (e) {
+        throw new Error(
+          `[BitcoinHeadlessWallet] privateKey must be a 32-byte hex string or valid WIF: ${(e as Error).message}`,
+        );
+      }
+    }
+
+    if (privKeyBuffer.length !== 32) {
+      throw new Error(
+        `[BitcoinHeadlessWallet] Private key must be exactly 32 bytes, got ${privKeyBuffer.length}`,
+      );
+    }
+
+    const root = bip32.fromSeed(privKeyBuffer, bitcoinNetwork);
+    return BitcoinHeadlessWallet.create({ ...config, root });
+  }
+
   // ---------------------------------------------------------------------------
   // IBitcoinWallet
   // ---------------------------------------------------------------------------
@@ -153,18 +179,190 @@ export class BitcoinHeadlessWallet implements IBitcoinWallet {
         "[BitcoinHeadlessWallet] No provider provided. Pass an IBitcoinProvider to fetch balance.",
       );
     }
-    const [paymentAddress] = this.manager.getAddresses([AddressPurpose.Payment]);
-    const info = await this.provider.fetchAddress(paymentAddress.address);
-    const confirmed =
-      info.chain_stats.funded_txo_sum - info.chain_stats.spent_txo_sum;
-    const unconfirmed =
-      info.mempool_stats.funded_txo_sum - info.mempool_stats.spent_txo_sum;
+
+    const paymentAddresses = this.manager.getAddresses([
+      AddressPurpose.Payment,
+    ]);
+
+    const addressInfos = await Promise.all(
+      paymentAddresses.map((address) =>
+        this.provider!.fetchAddressInfo(address.address),
+      ),
+    );
+
+    const { confirmed, unconfirmed } = addressInfos.reduce(
+      (acc, info) => {
+        acc.confirmed +=
+          info.chain_stats.funded_txo_sum - info.chain_stats.spent_txo_sum;
+
+        acc.unconfirmed +=
+          info.mempool_stats.funded_txo_sum - info.mempool_stats.spent_txo_sum;
+
+        return acc;
+      },
+      {
+        confirmed: 0,
+        unconfirmed: 0,
+      },
+    );
+
     const total = confirmed + unconfirmed;
+
     return {
       confirmed: confirmed.toString(),
       unconfirmed: unconfirmed.toString(),
       total: total.toString(),
     };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Address manager — public delegates
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Derive a contiguous range of addresses for a single purpose / change level.
+   * Delegates to `BitcoinAddressManager.getAddressesByPurpose`.
+   */
+  getAddressesByPurpose(
+    purpose: AddressPurpose,
+    start = 0,
+    count = 20,
+    change = 0,
+  ): DerivedBitcoinAddress[] {
+    return this.manager.getAddressesByPurpose(purpose, start, count, change);
+  }
+
+  /**
+   * Scan the derivation path for `address` up to `maxGap` indices across both
+   * external and internal (change) chains. Returns the matching
+   * `DerivedBitcoinAddress` (with correct `change` and `index`) or `undefined`.
+   * Delegates to `BitcoinAddressManager.findAddress`.
+   */
+  findManagedAddress(
+    address: string,
+    purpose: AddressPurpose,
+    maxGap = 20,
+  ): DerivedBitcoinAddress | undefined {
+    return this.manager.findAddress(address, purpose, maxGap);
+  }
+
+  /**
+   * Export the BIP-84 (P2WPKH) account public key as xpub (mainnet) / tpub (testnet).
+   * Delegates to `BitcoinAddressManager.getAccountXpub`.
+   */
+  getAccountXpub(): string {
+    return this.manager.getAccountXpub();
+  }
+
+  /**
+   * Export the BIP-86 (P2TR / Taproot) account public key as xpub (mainnet) / tpub (testnet).
+   * Delegates to `BitcoinAddressManager.getTaprootXpub`.
+   */
+  getTaprootXpub(): string {
+    return this.manager.getTaprootXpub();
+  }
+
+  /**
+   * Export the BIP-84 account public key with the zpub (mainnet) / vpub (testnet)
+   * version prefix. Delegates to `BitcoinAddressManager.getAccountZpub`.
+   */
+  getAccountZpub(): string {
+    return this.manager.getAccountZpub();
+  }
+
+  /**
+   * Fetch unspent transaction outputs (UTXOs) for one or both managed addresses.
+   *
+   * @param purposes - Which address(es) to query. Defaults to both Payment and
+   *   Ordinals so callers get a unified view. Pass `[AddressPurpose.Payment]`
+   *   to restrict to the P2WPKH address only (e.g. when building a send tx).
+   * @returns Flat array of UTXOs across all requested addresses, each annotated
+   *   with the `address` and `purpose` it belongs to so callers can route
+   *   inputs correctly (P2WPKH vs P2TR signing).
+   */
+  async fetchUTXOs(
+    purposes: AddressPurpose[] = [
+      AddressPurpose.Payment,
+      AddressPurpose.Ordinals,
+    ],
+  ): Promise<(UTxO & { address: string; purpose: AddressPurpose })[]> {
+    if (!this.provider) {
+      throw new Error(
+        "[BitcoinHeadlessWallet] No provider provided. Pass an IBitcoinProvider to fetch UTXOs.",
+      );
+    }
+
+    const addresses = this.manager.getAddresses(purposes);
+    const results = await Promise.all(
+      addresses.map(async (derived) => {
+        const utxos = await this.provider!.fetchAddressUTxOs(derived.address);
+        return utxos.map((utxo) => ({
+          ...utxo,
+          address: derived.address,
+          purpose: derived.purpose,
+        }));
+      }),
+    );
+
+    return results.flat();
+  }
+
+  /**
+   * Fetch confirmed and mempool transaction history for one or both managed
+   * addresses, with optional pagination via `lastSeenTxid`.
+   *
+   * @param options.purposes - Which address(es) to query (default: both).
+   * @param options.lastSeenTxid - Cursor for page-based pagination: pass the
+   *   last `txid` from a previous page to fetch the next batch (Esplora API
+   *   returns at most 25 txs per page).
+   * @returns Transactions in reverse-chronological order (newest first),
+   *   each annotated with `address` and `purpose` for easy filtering.
+   *   If both addresses are queried the two lists are merged and re-sorted by
+   *   block height descending (unconfirmed txs sort to the top).
+   */
+  async getTransactionHistory(
+    options: {
+      purposes?: AddressPurpose[];
+      lastSeenTxid?: string;
+    } = {},
+  ): Promise<
+    (TransactionsInfo & { address: string; purpose: AddressPurpose })[]
+  > {
+    if (!this.provider) {
+      throw new Error(
+        "[BitcoinHeadlessWallet] No provider provided. Pass an IBitcoinProvider to fetch transaction history.",
+      );
+    }
+
+    const purposes = options.purposes ?? [
+      AddressPurpose.Payment,
+      AddressPurpose.Ordinals,
+    ];
+    const addresses = this.manager.getAddresses(purposes);
+
+    const results = await Promise.all(
+      addresses.map(async (derived) => {
+        const txs = await this.provider!.fetchAddressTxs(
+          derived.address,
+          options.lastSeenTxid,
+        );
+        return txs.map((tx) => ({
+          ...tx,
+          address: derived.address,
+          purpose: derived.purpose,
+        }));
+      }),
+    );
+
+    // Merge and sort: unconfirmed (block_height = 0 / undefined) first,
+    // then descending block height so the most recent confirmed tx comes next.
+    return results.flat().sort((a, b) => {
+      const ha = a.status.block_height ?? 0;
+      const hb = b.status.block_height ?? 0;
+      if (!a.status.confirmed && b.status.confirmed) return -1;
+      if (a.status.confirmed && !b.status.confirmed) return 1;
+      return hb - ha;
+    });
   }
 
   async signMessage(
@@ -178,19 +376,19 @@ export class BitcoinHeadlessWallet implements IBitcoinWallet {
       );
     }
 
-    const derived = this.findDerivedByAddress(address);
-    const child = this.manager.getChild(derived.purpose);
+    const bitcoin_address = this.findDerivedByAddress(address);
+    const child = this.manager.getChild(
+      bitcoin_address.purpose,
+      bitcoin_address.change,
+      bitcoin_address.index,
+    );
     if (!child.privateKey) {
       throw new Error(
-        "[BitcoinHeadlessWallet] Private key unavailable for signing",
+        "BitcoinHeadlessWallet: Private key unavailable for signing",
       );
     }
 
     const privateKey = Buffer.from(child.privateKey);
-    const keyPair = ECPair.fromPrivateKey(privateKey, {
-      compressed: true,
-      network: this.bitcoinNetwork,
-    });
 
     // Bitcoin signed-message standard preimage (see bitcoinMessageHash helper).
     const hash = bitcoinMessageHash(message);
@@ -199,7 +397,7 @@ export class BitcoinHeadlessWallet implements IBitcoinWallet {
     // Header = 27 + 4 (compressed) + recoveryId  →  0x1f or 0x20 for compressed P2PKH-style.
     // External verifiers use the header to recover the pubkey and confirm the address.
     const rawSig = Buffer.from(ecc.sign(hash, privateKey));
-    const compressedPubkey = Buffer.from(keyPair.publicKey);
+    const compressedPubkey = Buffer.from(child.publicKey);
     const recoveryId = findRecoveryId(hash, rawSig, compressedPubkey);
     const header = 27 + 4 + recoveryId;
     const sig65 = Buffer.concat([Buffer.from([header]), rawSig]);
@@ -216,9 +414,13 @@ export class BitcoinHeadlessWallet implements IBitcoinWallet {
     address: string,
     message: string,
     signature: string,
-  ): Promise<boolean> {
-    return verifyBitcoinMessage(address, message, signature, this.bitcoinNetwork)
-      .valid;
+  ): Promise<VerifyMessageResult> {
+    return verifyBitcoinMessage(
+      address,
+      message,
+      signature,
+      this.bitcoinNetwork,
+    );
   }
 
   async signTransfer(
@@ -233,7 +435,9 @@ export class BitcoinHeadlessWallet implements IBitcoinWallet {
       throw new Error("[BitcoinHeadlessWallet] No recipients provided");
     }
 
-    const [paymentAddress] = this.manager.getAddresses([AddressPurpose.Payment]);
+    const [paymentAddress] = this.manager.getAddresses([
+      AddressPurpose.Payment,
+    ]);
     const utxos = await this.provider.fetchAddressUTxOs(paymentAddress.address);
 
     let feeRate = 2;
@@ -313,12 +517,13 @@ export class BitcoinHeadlessWallet implements IBitcoinWallet {
     for (const purpose of [AddressPurpose.Payment, AddressPurpose.Ordinals]) {
       const derived = this.manager.getAddress(purpose);
       addressToSigner.set(derived.address, {
-        signer: this.signerForPurpose(purpose),
+        signer: this.signerForPurpose(purpose, derived.change, derived.index),
         purpose,
       });
     }
 
-    const targets = signInputs ?? buildDefaultSignTargets(psbt, addressToSigner);
+    const targets =
+      signInputs ?? buildDefaultSignTargets(psbt, addressToSigner);
     const indexesUsed = new Set<number>();
 
     for (const [address, indexes] of Object.entries(targets)) {
@@ -357,16 +562,20 @@ export class BitcoinHeadlessWallet implements IBitcoinWallet {
 
   protected findDerivedByAddress(address: string): DerivedBitcoinAddress {
     for (const purpose of [AddressPurpose.Payment, AddressPurpose.Ordinals]) {
-      const derived = this.manager.getAddress(purpose);
-      if (derived.address === address) return derived;
+      const found = this.manager.findAddress(address, purpose);
+      if (found) return found;
     }
     throw new Error(
-      `[BitcoinHeadlessWallet] Address ${address} is not managed by this wallet`,
+      `BitcoinHeadlessWallet: Address ${address} is not managed by this wallet`,
     );
   }
 
-  protected signerForPurpose(purpose: AddressPurpose): TaprootCapableSigner {
-    const child = this.manager.getChild(purpose);
+  protected signerForPurpose(
+    purpose: AddressPurpose,
+    change = 0,
+    index = 0,
+  ): TaprootCapableSigner {
+    const child = this.manager.getChild(purpose, change, index);
     if (!child.privateKey) {
       throw new Error("[BitcoinHeadlessWallet] Private key unavailable");
     }
@@ -394,7 +603,9 @@ export class BitcoinHeadlessWallet implements IBitcoinWallet {
     );
     const tweakedFullPub = ecc.pointFromScalar(tweakedPrivateKey, true);
     if (!tweakedFullPub) {
-      throw new Error("[BitcoinHeadlessWallet] Failed to derive tweaked Taproot pubkey");
+      throw new Error(
+        "[BitcoinHeadlessWallet] Failed to derive tweaked Taproot pubkey",
+      );
     }
     const tweakedXOnly = toXOnly(Buffer.from(tweakedFullPub));
     const signer: TaprootCapableSigner = {
@@ -423,12 +634,6 @@ export class BitcoinHeadlessWallet implements IBitcoinWallet {
     entry: { signer: TaprootCapableSigner; purpose: AddressPurpose },
   ) {
     if (entry.purpose === AddressPurpose.Ordinals) {
-      // BIP-371: set `tapInternalKey` on the input so bitcoinjs-lib's
-      // getTaprootHashesForSig recognises this as a key-path spend. The
-      // matching check is `toXOnly(signer.publicKey).equals(outputKey)` where
-      // outputKey is extracted from the witnessUtxo script — our signer's
-      // publicKey is the tweaked output key, so the match succeeds.
-      // SIGHASH_DEFAULT (0x00) yields the BIP-341 64-byte Schnorr signature.
       if (!entry.signer.internalPubkey) {
         throw new Error(
           "[BitcoinHeadlessWallet] Taproot signer missing internalPubkey",
@@ -437,11 +642,9 @@ export class BitcoinHeadlessWallet implements IBitcoinWallet {
       psbt.updateInput(index, {
         tapInternalKey: entry.signer.internalPubkey,
       });
-      psbt.signInput(
-        index,
-        entry.signer as unknown as Signer,
-        [bitcoin.Transaction.SIGHASH_DEFAULT],
-      );
+      psbt.signInput(index, entry.signer as unknown as Signer, [
+        bitcoin.Transaction.SIGHASH_DEFAULT,
+      ]);
     } else {
       psbt.signInput(index, entry.signer as unknown as Signer);
     }
@@ -473,7 +676,10 @@ const DUST_THRESHOLD_P2WPKH = 546;
  */
 function buildDefaultSignTargets(
   psbt: Psbt,
-  addressToSigner: Map<string, { signer: TaprootCapableSigner; purpose: AddressPurpose }>,
+  addressToSigner: Map<
+    string,
+    { signer: TaprootCapableSigner; purpose: AddressPurpose }
+  >,
 ): Record<string, number[]> {
   const purposeToAddress = new Map<AddressPurpose, string>();
   for (const [address, entry] of addressToSigner.entries()) {
@@ -488,7 +694,11 @@ function buildDefaultSignTargets(
     if (script.length === 22 && script[0] === 0x00 && script[1] === 0x14) {
       // OP_0 <20-byte-hash>  → P2WPKH
       purpose = AddressPurpose.Payment;
-    } else if (script.length === 34 && script[0] === 0x51 && script[1] === 0x20) {
+    } else if (
+      script.length === 34 &&
+      script[0] === 0x51 &&
+      script[1] === 0x20
+    ) {
       // OP_1 <32-byte-x-only-key>  → P2TR
       purpose = AddressPurpose.Ordinals;
     }
@@ -558,15 +768,19 @@ function selectUtxosLargestFirst(
  * the signer's pubkey. Required to emit a 65-byte compact recoverable signature
  * compatible with the Bitcoin signed-message standard.
  */
-function findRecoveryId(hash: Buffer, sig: Buffer, expectedPubkey: Buffer): 0 | 1 {
-  for (const rid of [0, 1] as const) {
+function findRecoveryId(
+  hash: Buffer,
+  sig: Buffer,
+  expectedPubkey: Buffer,
+): RecoveryId {
+  for (const rid of [0, 1, 2, 3] as const) {
     const recovered = ecc.recover(hash, sig, rid, true);
     if (recovered && Buffer.from(recovered).equals(expectedPubkey)) {
       return rid;
     }
   }
   throw new Error(
-    "[BitcoinHeadlessWallet] Failed to determine recovery id for signature",
+    "BitcoinHeadlessWallet: Failed to determine recovery id for signature",
   );
 }
 
@@ -605,8 +819,10 @@ export function verifyBitcoinMessage(
     decoded = Buffer.from(signature, "base64");
     // Buffer.from with base64 silently drops invalid chars; re-encode and compare
     // to catch garbage like "not-a-real-signature".
-    if (decoded.toString("base64").replace(/=+$/, "") !==
-        signature.replace(/=+$/, "")) {
+    if (
+      decoded.toString("base64").replace(/=+$/, "") !==
+      signature.replace(/=+$/, "")
+    ) {
       return { valid: false, reason: "signature is not valid base64" };
     }
   } catch {
@@ -635,12 +851,18 @@ export function verifyBitcoinMessage(
 
   const recovered = ecc.recover(hash, rawSig, recoveryId, compressed);
   if (!recovered) {
-    return { valid: false, reason: "failed to recover public key from signature" };
+    return {
+      valid: false,
+      reason: "failed to recover public key from signature",
+    };
   }
   const recoveredPubkey = Buffer.from(recovered);
 
   if (!ecc.verify(hash, recoveredPubkey, rawSig)) {
-    return { valid: false, reason: "signature does not verify against recovered pubkey" };
+    return {
+      valid: false,
+      reason: "signature does not verify against recovered pubkey",
+    };
   }
 
   const candidates: string[] = [];
@@ -648,19 +870,28 @@ export function verifyBitcoinMessage(
     candidates.push(
       bitcoin.payments.p2pkh({ pubkey: recoveredPubkey, network }).address!,
     );
-  } catch { /* skip */ }
+  } catch {
+    /* skip */
+  }
   if (compressed) {
     try {
       candidates.push(
         bitcoin.payments.p2wpkh({ pubkey: recoveredPubkey, network }).address!,
       );
-    } catch { /* skip */ }
+    } catch {
+      /* skip */
+    }
     try {
-      const p2wpkh = bitcoin.payments.p2wpkh({ pubkey: recoveredPubkey, network });
+      const p2wpkh = bitcoin.payments.p2wpkh({
+        pubkey: recoveredPubkey,
+        network,
+      });
       candidates.push(
         bitcoin.payments.p2sh({ redeem: p2wpkh, network }).address!,
       );
-    } catch { /* skip */ }
+    } catch {
+      /* skip */
+    }
     try {
       candidates.push(
         bitcoin.payments.p2tr({
@@ -668,7 +899,9 @@ export function verifyBitcoinMessage(
           network,
         }).address!,
       );
-    } catch { /* skip */ }
+    } catch {
+      /* skip */
+    }
   }
 
   if (candidates.includes(address)) {
@@ -724,7 +957,9 @@ function tweakPrivateKey(privateKey: Buffer, internalPubkey: Buffer): Buffer {
   );
   const tweaked = ecc.privateAdd(priv, taggedHash);
   if (!tweaked) {
-    throw new Error("[BitcoinHeadlessWallet] Failed to tweak Taproot private key");
+    throw new Error(
+      "[BitcoinHeadlessWallet] Failed to tweak Taproot private key",
+    );
   }
   return Buffer.from(tweaked);
 }

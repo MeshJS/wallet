@@ -4,20 +4,32 @@ import { TransactionsInfo } from "../types/transactions-info";
 import { TransactionsStatus } from "../types/transactions-status";
 import { UTxO } from "../types/utxo";
 
-export interface IBitcoinProvider {
-  fetchAddress(address: string): Promise<AddressInfo>;
-  fetchAddressTransactions(
-    address: string,
-    last_seen_txid?: string,
-  ): Promise<TransactionsInfo[]>;
+/**
+ * Read-only chain data queries for Bitcoin addresses and scripts.
+ * Mirrors the Mesh `IFetcher` interface shape for Cardano, adapted to Bitcoin.
+ * Only the methods relevant to Bitcoin are included; script variants are optional
+ * because P2SH/P2WSH usage is uncommon in most dApp workflows.
+ */
+export interface IBitcoinFetcher {
+  fetchAddressInfo(address: string): Promise<AddressInfo>;
   fetchAddressUTxOs(address: string): Promise<UTxO[]>;
-  fetchScript(hash: string): Promise<ScriptInfo>;
-  fetchScriptTransactions(
-    hash: string,
-    last_seen_txid?: string,
+  fetchUTxO(txid: string, vout?: number): Promise<UTxO[]>;
+  fetchAddressTxs(
+    address: string,
+    lastSeenTxid?: string,
   ): Promise<TransactionsInfo[]>;
-  fetchScriptUTxOs(hash: string): Promise<UTxO[]>;
-  fetchTransactionStatus(txid: string): Promise<TransactionsStatus>;
+  fetchTxInfo(txid: string): Promise<TransactionsStatus>;
   fetchFeeEstimates(blocks: number): Promise<number>;
+  fetchScriptInfo?(hash: string): Promise<ScriptInfo>;
+  fetchScriptUTxOs?(hash: string): Promise<UTxO[]>;
+  fetchScriptTxs?(
+    hash: string,
+    lastSeenTxid?: string,
+  ): Promise<TransactionsInfo[]>;
+}
+
+export interface IBitcoinSubmitter {
   submitTx(tx: string): Promise<string>;
 }
+
+export interface IBitcoinProvider extends IBitcoinFetcher, IBitcoinSubmitter {}

@@ -1,6 +1,7 @@
 import {
   XverseAdapter,
   XverseRpcError,
+  XVERSE_ACCESS_DENIED,
   isXverseInstalled,
 } from "../../src/bitcoin/wallet/browser/adapters/xverse-adapter";
 import {
@@ -17,6 +18,11 @@ function installProvider(request: jest.Mock) {
   (globalThis as any).XverseProviders = {
     BitcoinProvider: { request },
   };
+}
+
+/** Default successful `wallet_connect` response for enable(). */
+function connectOk(addresses: unknown[] = []) {
+  return { status: "success", result: { addresses } };
 }
 
 afterEach(() => {
@@ -45,27 +51,24 @@ describe("XverseAdapter.enable", () => {
     await expect(XverseAdapter.enable()).rejects.toThrow(/not installed/);
   });
 
-  it("calls getAddresses on enable and seeds the cache", async () => {
-    const request = jest.fn().mockResolvedValue({
-      status: "success",
-      result: {
-        addresses: [
-          {
-            address: "tb1qpayment",
-            publicKey: "0203abcd",
-            addressType: "p2wpkh",
-            purpose: AddressPurpose.Payment,
-            walletType: "software",
-          },
-        ],
-      },
-    });
+  it("calls wallet_connect on enable and seeds the cache", async () => {
+    const request = jest.fn().mockResolvedValue(
+      connectOk([
+        {
+          address: "tb1qpayment",
+          publicKey: "0203abcd",
+          addressType: "p2wpkh",
+          purpose: AddressPurpose.Payment,
+          walletType: "software",
+        },
+      ]),
+    );
     installProvider(request);
     const adapter = await XverseAdapter.enable();
     expect(request).toHaveBeenCalledWith(
-      "getAddresses",
+      "wallet_connect",
       expect.objectContaining({
-        purposes: [AddressPurpose.Payment, AddressPurpose.Ordinals],
+        addresses: [AddressPurpose.Payment, AddressPurpose.Ordinals],
       }),
     );
     const addrs = await adapter.getAddresses([AddressPurpose.Payment]);
@@ -76,10 +79,7 @@ describe("XverseAdapter.enable", () => {
 
 describe("XverseAdapter — wire-format compatibility", () => {
   it("handles the sats-connect-normalised {status, result} envelope", async () => {
-    const request = jest.fn().mockResolvedValue({
-      status: "success",
-      result: { addresses: [] },
-    });
+    const request = jest.fn().mockResolvedValue(connectOk([]));
     installProvider(request);
     const adapter = await XverseAdapter.enable();
     expect(adapter).toBeDefined();
@@ -88,7 +88,7 @@ describe("XverseAdapter — wire-format compatibility", () => {
   it("handles the raw JSON-RPC 2.0 envelope", async () => {
     const request = jest.fn().mockResolvedValue({
       jsonrpc: "2.0",
-      result: { addresses: [] },
+      result: { addresses: [] as unknown[] },
       id: 1,
     });
     installProvider(request);
@@ -105,13 +105,56 @@ describe("XverseAdapter — wire-format compatibility", () => {
     await expect(XverseAdapter.enable()).rejects.toThrow(/User rejected/);
   });
 
-  it("throws XverseRpcError on a raw JSON-RPC error envelope", async () => {
-    const request = jest.fn().mockResolvedValue({
-      jsonrpc: "2.0",
-      error: { code: -32002, message: "Access denied" },
+  it("falls back to wallet_requestPermissions + getAddresses when wallet_connect is missing", async () => {
+    const request = jest.fn();
+    request.mockResolvedValueOnce({
+      status: "error",
+      error: { code: -32601, message: "Method not found" },
+    });
+    request.mockResolvedValueOnce({ status: "success", result: null });
+    request.mockResolvedValueOnce({
+      status: "success",
+      result: {
+        addresses: [
+          {
+            address: "tb1qlegacy",
+            publicKey: "0203abcd",
+            addressType: "p2wpkh",
+            purpose: AddressPurpose.Payment,
+            walletType: "software",
+          },
+        ],
+      },
     });
     installProvider(request);
-    await expect(XverseAdapter.enable()).rejects.toThrow(/Access denied/);
+    const adapter = await XverseAdapter.enable();
+    expect(request.mock.calls.map((c) => c[0])).toEqual([
+      "wallet_connect",
+      "wallet_requestPermissions",
+      "getAddresses",
+    ]);
+    const addrs = await adapter.getAddresses([AddressPurpose.Payment]);
+    expect(addrs[0]!.address).toBe("tb1qlegacy");
+  });
+
+  it("retries getAddresses after ACCESS_DENIED when using the legacy connect path", async () => {
+    const request = jest.fn();
+    request.mockResolvedValueOnce({
+      status: "error",
+      error: { code: -32601, message: "Method not found" },
+    });
+    request.mockResolvedValueOnce({ status: "success", result: null });
+    request.mockResolvedValueOnce({
+      status: "error",
+      error: { code: XVERSE_ACCESS_DENIED, message: "Access denied" },
+    });
+    request.mockResolvedValueOnce({ status: "success", result: null });
+    request.mockResolvedValueOnce({
+      status: "success",
+      result: { addresses: [] },
+    });
+    installProvider(request);
+    await expect(XverseAdapter.enable()).resolves.toBeDefined();
   });
 
   it("preserves the RPC error code on XverseRpcError", async () => {
@@ -133,8 +176,8 @@ describe("XverseAdapter — wire-format compatibility", () => {
 describe("XverseAdapter.getNetwork", () => {
   async function setupConnectedAdapter(networkResult: unknown) {
     const request = jest.fn();
-    // First call: getAddresses (from enable)
-    request.mockResolvedValueOnce({ status: "success", result: { addresses: [] } });
+    // First call: wallet_connect (from enable)
+    request.mockResolvedValueOnce(connectOk([]));
     // Second call: wallet_getNetwork
     request.mockResolvedValueOnce({ status: "success", result: networkResult });
     installProvider(request);
@@ -153,7 +196,7 @@ describe("XverseAdapter.getNetwork", () => {
 
   it("falls back to bare getNetwork if wallet_getNetwork returns METHOD_NOT_FOUND", async () => {
     const request = jest.fn();
-    request.mockResolvedValueOnce({ status: "success", result: { addresses: [] } });
+    request.mockResolvedValueOnce(connectOk([]));
     request.mockResolvedValueOnce({
       status: "error",
       error: { code: -32601, message: "Method not found" },
@@ -167,7 +210,7 @@ describe("XverseAdapter.getNetwork", () => {
     const network = await adapter.getNetwork();
     expect(network).toBe("Testnet4");
     expect(request.mock.calls.map((c: any[]) => c[0])).toEqual([
-      "getAddresses",
+      "wallet_connect",
       "wallet_getNetwork",
       "getNetwork",
     ]);
@@ -187,7 +230,7 @@ describe("XverseAdapter.getNetwork", () => {
 describe("XverseAdapter.getAccounts", () => {
   async function connected(request: jest.Mock) {
     installProvider(request);
-    request.mockResolvedValueOnce({ status: "success", result: { addresses: [] } });
+    request.mockResolvedValueOnce(connectOk([]));
     return XverseAdapter.enable();
   }
 
@@ -235,40 +278,38 @@ describe("XverseAdapter.getAccounts", () => {
 });
 
 describe("XverseAdapter address-type validation", () => {
-  it("throws on unknown addressType values", async () => {
-    const request = jest.fn().mockResolvedValue({
-      status: "success",
-      result: {
-        addresses: [
-          {
-            address: "tb1qmystery",
-            publicKey: "0203",
-            addressType: "not-a-real-type",
-            purpose: AddressPurpose.Payment,
-            walletType: "software",
-          },
-        ],
-      },
-    });
+  it("silently drops addresses with unknown addressType values (forward-compat)", async () => {
+    const request = jest.fn().mockResolvedValue(
+      connectOk([
+        {
+          address: "tb1qmystery",
+          publicKey: "0203",
+          addressType: "not-a-real-type",
+          purpose: AddressPurpose.Payment,
+          walletType: "software",
+        },
+      ]),
+    );
     installProvider(request);
-    await expect(XverseAdapter.enable()).rejects.toThrow(/Unknown addressType/);
+    // Should NOT throw — unknown types are filtered out to stay compatible with
+    // future Xverse releases that introduce new address types.
+    const adapter = await XverseAdapter.enable();
+    const addrs = await adapter.getAddresses([AddressPurpose.Payment]);
+    expect(addrs).toHaveLength(0);
   });
 
   it("maps the legacy p2sh-p2wpkh alias to p2sh", async () => {
-    const request = jest.fn().mockResolvedValue({
-      status: "success",
-      result: {
-        addresses: [
-          {
-            address: "2N...",
-            publicKey: "0203",
-            addressType: "p2sh-p2wpkh",
-            purpose: AddressPurpose.Payment,
-            walletType: "software",
-          },
-        ],
-      },
-    });
+    const request = jest.fn().mockResolvedValue(
+      connectOk([
+        {
+          address: "2N...",
+          publicKey: "0203",
+          addressType: "p2sh-p2wpkh",
+          purpose: AddressPurpose.Payment,
+          walletType: "software",
+        },
+      ]),
+    );
     installProvider(request);
     const adapter = await XverseAdapter.enable();
     const addrs = await adapter.getAddresses([AddressPurpose.Payment]);
@@ -279,7 +320,7 @@ describe("XverseAdapter address-type validation", () => {
 describe("XverseAdapter.signMessage", () => {
   async function connected(request: jest.Mock) {
     installProvider(request);
-    request.mockResolvedValueOnce({ status: "success", result: { addresses: [] } });
+    request.mockResolvedValueOnce(connectOk([]));
     return XverseAdapter.enable();
   }
 
@@ -323,7 +364,7 @@ describe("XverseAdapter.signMessage", () => {
 describe("XverseAdapter.signTransfer", () => {
   it("calls sendTransfer and returns the txid string", async () => {
     const request = jest.fn();
-    request.mockResolvedValueOnce({ status: "success", result: { addresses: [] } });
+    request.mockResolvedValueOnce(connectOk([]));
     request.mockResolvedValueOnce({
       status: "success",
       result: { txid: "abcd1234" },
@@ -341,7 +382,7 @@ describe("XverseAdapter.signTransfer", () => {
 describe("XverseAdapter.signPsbt", () => {
   it("returns psbt base64 when broadcast=false", async () => {
     const request = jest.fn();
-    request.mockResolvedValueOnce({ status: "success", result: { addresses: [] } });
+    request.mockResolvedValueOnce(connectOk([]));
     request.mockResolvedValueOnce({
       status: "success",
       result: { psbt: "cHNidP-signed" },
@@ -354,7 +395,7 @@ describe("XverseAdapter.signPsbt", () => {
 
   it("returns txid when broadcast=true and provider returns one", async () => {
     const request = jest.fn();
-    request.mockResolvedValueOnce({ status: "success", result: { addresses: [] } });
+    request.mockResolvedValueOnce(connectOk([]));
     request.mockResolvedValueOnce({
       status: "success",
       result: { psbt: "cHNidP-signed", txid: "broadcast-txid" },
@@ -364,12 +405,40 @@ describe("XverseAdapter.signPsbt", () => {
     const out = await adapter.signPsbt({ psbt: "cHNidP-unsigned", broadcast: true });
     expect(out).toBe("broadcast-txid");
   });
+
+  it("throws when broadcast=true but txid is missing from response", async () => {
+    const request = jest.fn();
+    request.mockResolvedValueOnce(connectOk([]));
+    request.mockResolvedValueOnce({
+      status: "success",
+      result: { psbt: "cHNidP-signed" }, // no txid
+    });
+    installProvider(request);
+    const adapter = await XverseAdapter.enable();
+    await expect(
+      adapter.signPsbt({ psbt: "cHNidP-unsigned", broadcast: true }),
+    ).rejects.toThrow(/did not return a txid/);
+  });
+
+  it("throws when broadcast=false but psbt is missing from response", async () => {
+    const request = jest.fn();
+    request.mockResolvedValueOnce(connectOk([]));
+    request.mockResolvedValueOnce({
+      status: "success",
+      result: {}, // neither psbt nor txid
+    });
+    installProvider(request);
+    const adapter = await XverseAdapter.enable();
+    await expect(
+      adapter.signPsbt({ psbt: "cHNidP-unsigned", broadcast: false }),
+    ).rejects.toThrow(/did not return a signed PSBT/);
+  });
 });
 
 describe("XverseAdapter.getBalance", () => {
   it("coerces numeric values to strings", async () => {
     const request = jest.fn();
-    request.mockResolvedValueOnce({ status: "success", result: { addresses: [] } });
+    request.mockResolvedValueOnce(connectOk([]));
     request.mockResolvedValueOnce({
       status: "success",
       result: { confirmed: 1234, unconfirmed: 0, total: 1234 },
@@ -378,5 +447,40 @@ describe("XverseAdapter.getBalance", () => {
     const adapter = await XverseAdapter.enable();
     const bal = await adapter.getBalance();
     expect(bal).toEqual({ confirmed: "1234", unconfirmed: "0", total: "1234" });
+  });
+
+  it("throws when the provider response is missing fields (guards against undefined strings)", async () => {
+    const request = jest.fn();
+    request.mockResolvedValueOnce(connectOk([]));
+    request.mockResolvedValueOnce({
+      status: "success",
+      result: { confirmed: 100 }, // unconfirmed and total missing
+    });
+    installProvider(request);
+    const adapter = await XverseAdapter.enable();
+    await expect(adapter.getBalance()).rejects.toThrow(/incomplete response/);
+  });
+});
+
+describe("XverseAdapter.verifyMessage", () => {
+  async function connected(request: jest.Mock) {
+    installProvider(request);
+    request.mockResolvedValueOnce(connectOk([]));
+    // getNetwork is called inside verifyMessage
+    request.mockResolvedValueOnce({
+      status: "success",
+      result: { bitcoin: { name: "Testnet4" } },
+    });
+    return XverseAdapter.enable();
+  }
+
+  it("returns valid:false (not throw) when signature is not 65 bytes (e.g. BIP-322)", async () => {
+    const request = jest.fn();
+    const adapter = await connected(request);
+    // A non-65-byte base64 string simulates a BIP-322 or malformed signature.
+    const nonEcdsaSig = Buffer.alloc(80).toString("base64");
+    const result = await adapter.verifyMessage("tb1q...", "hello", nonEcdsaSig);
+    expect(result.valid).toBe(false);
+    expect(result.reason).toMatch(/65-byte/i);
   });
 });

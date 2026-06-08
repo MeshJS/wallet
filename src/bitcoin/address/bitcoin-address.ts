@@ -3,8 +3,8 @@ import type { Network } from "bitcoinjs-lib";
 import {
   AddressPurpose,
   AddressType,
-  BitcoinAddress as BitcoinAddressInfo,
   BitcoinAccount,
+  BitcoinAddress as BitcoinAddressInfo,
 } from "../interfaces/bitcoin-wallet";
 import { bitcoin } from "../wallet/core/bitcoin-core";
 
@@ -20,7 +20,9 @@ export type BitcoinNetworkName = "Mainnet" | "Testnet4";
  * the provider's responsibility, not the encoder's.
  */
 export function networkFromName(name: BitcoinNetworkName): Network {
-  return name === "Mainnet" ? bitcoin.networks.bitcoin : bitcoin.networks.testnet;
+  return name === "Mainnet"
+    ? bitcoin.networks.bitcoin
+    : bitcoin.networks.testnet;
 }
 
 /**
@@ -29,7 +31,9 @@ export function networkFromName(name: BitcoinNetworkName): Network {
  * callers cannot accidentally mutate the source buffer.
  */
 export function toXOnly(pubkey: Buffer): Buffer {
-  return pubkey.length === 32 ? Buffer.from(pubkey) : Buffer.from(pubkey.subarray(1, 33));
+  return pubkey.length === 32
+    ? Buffer.from(pubkey)
+    : Buffer.from(pubkey.subarray(1, 33));
 }
 
 /**
@@ -39,7 +43,9 @@ export function deriveP2wpkhAddress(
   publicKey: Buffer | Uint8Array,
   network: Network,
 ): { address: string; publicKey: string } {
-  const pubkey = Buffer.isBuffer(publicKey) ? publicKey : Buffer.from(publicKey);
+  const pubkey = Buffer.isBuffer(publicKey)
+    ? publicKey
+    : Buffer.from(publicKey);
   const payment = bitcoin.payments.p2wpkh({ pubkey, network });
   if (!payment.address) {
     throw new Error("[BitcoinAddress] Failed to derive P2WPKH address");
@@ -58,7 +64,9 @@ export function deriveP2trAddress(
   publicKey: Buffer | Uint8Array,
   network: Network,
 ): { address: string; publicKey: string } {
-  const pubkey = Buffer.isBuffer(publicKey) ? publicKey : Buffer.from(publicKey);
+  const pubkey = Buffer.isBuffer(publicKey)
+    ? publicKey
+    : Buffer.from(publicKey);
   const internalPubkey = toXOnly(pubkey);
   const payment = bitcoin.payments.p2tr({ internalPubkey, network });
   if (!payment.address) {
@@ -83,6 +91,8 @@ export class DerivedBitcoinAddress {
   readonly addressType: AddressType;
   readonly walletType: "software" | "ledger" | "keystone";
   readonly derivationPath: string;
+  readonly change: number;
+  readonly index: number;
 
   constructor(args: {
     address: string;
@@ -91,6 +101,8 @@ export class DerivedBitcoinAddress {
     addressType: AddressType;
     walletType?: "software" | "ledger" | "keystone";
     derivationPath: string;
+    change: number;
+    index: number;
   }) {
     this.address = args.address;
     this.publicKey = args.publicKey;
@@ -98,6 +110,8 @@ export class DerivedBitcoinAddress {
     this.addressType = args.addressType;
     this.walletType = args.walletType ?? "software";
     this.derivationPath = args.derivationPath;
+    this.change = args.change;
+    this.index = args.index;
   }
 
   toBitcoinAddress(): BitcoinAddressInfo {

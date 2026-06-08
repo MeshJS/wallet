@@ -20,13 +20,13 @@ const TESTNET_P2TR = "tb1ptc3m295wnrt8e2sw3q3mcshqc4v9w9hfuq7eenhm5dsymj6w2xysn7
  */
 function makeProvider(overrides: Partial<IBitcoinProvider> = {}): IBitcoinProvider {
   const base: IBitcoinProvider = {
-    fetchAddress: jest.fn(),
-    fetchAddressTransactions: jest.fn(),
+    fetchAddressInfo: jest.fn(),
+    fetchAddressTxs: jest.fn(),
     fetchAddressUTxOs: jest.fn(),
-    fetchScript: jest.fn(),
-    fetchScriptTransactions: jest.fn(),
+    fetchScriptInfo: jest.fn(),
+    fetchScriptTxs: jest.fn(),
     fetchScriptUTxOs: jest.fn(),
-    fetchTransactionStatus: jest.fn(),
+    fetchTxInfo: jest.fn(),
     fetchFeeEstimates: jest.fn(),
     submitTx: jest.fn(),
   } as unknown as IBitcoinProvider;
@@ -108,7 +108,7 @@ describe("BitcoinHeadlessWallet", () => {
 
     it("sums confirmed + unconfirmed correctly", async () => {
       const provider = makeProvider({
-        fetchAddress: jest.fn().mockResolvedValue({
+        fetchAddressInfo: jest.fn().mockResolvedValue({
           chain_stats: { funded_txo_sum: 100_000, spent_txo_sum: 40_000 },
           mempool_stats: { funded_txo_sum: 5_000, spent_txo_sum: 1_000 },
         }),
@@ -118,12 +118,12 @@ describe("BitcoinHeadlessWallet", () => {
       expect(bal.confirmed).toBe("60000");
       expect(bal.unconfirmed).toBe("4000");
       expect(bal.total).toBe("64000");
-      expect(provider.fetchAddress).toHaveBeenCalledWith(TESTNET_P2WPKH);
+      expect(provider.fetchAddressInfo).toHaveBeenCalledWith(TESTNET_P2WPKH);
     });
 
     it("handles a zero-activity address", async () => {
       const provider = makeProvider({
-        fetchAddress: jest.fn().mockResolvedValue({
+        fetchAddressInfo: jest.fn().mockResolvedValue({
           chain_stats: { funded_txo_sum: 0, spent_txo_sum: 0 },
           mempool_stats: { funded_txo_sum: 0, spent_txo_sum: 0 },
         }),

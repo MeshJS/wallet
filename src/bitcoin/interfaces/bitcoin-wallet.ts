@@ -1,3 +1,6 @@
+import { TransactionsInfo } from "../types/transactions-info";
+import { UTxO } from "../types/utxo";
+
 export enum AddressPurpose {
   Ordinals = "ordinals",
   Payment = "payment",
@@ -71,7 +74,7 @@ export interface IBitcoinWallet {
     address: string,
     message: string,
     signature: string,
-  ): Promise<boolean>;
+  ): Promise<VerifyMessageResult>;
   signTransfer(
     recipients: {
       address: string;
@@ -87,4 +90,13 @@ export interface IBitcoinWallet {
       | undefined;
     broadcast?: boolean | undefined;
   }): Promise<string>;
+  fetchUTXOs(
+    purposes?: AddressPurpose[],
+  ): Promise<(UTxO & { address: string; purpose: AddressPurpose })[]>;
+  getTransactionHistory(options?: {
+    purposes?: AddressPurpose[];
+    lastSeenTxid?: string;
+  }): Promise<
+    (TransactionsInfo & { address: string; purpose: AddressPurpose })[]
+  >;
 }

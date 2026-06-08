@@ -24,8 +24,8 @@ describe("verifyBitcoinMessage / BitcoinHeadlessWallet.verifyMessage", () => {
     it("instance verifyMessage returns true for a sig produced by signMessage", async () => {
       const wallet = await makeWallet();
       const { signature } = await wallet.signMessage(TESTNET_P2WPKH, "hello world");
-      const ok = await wallet.verifyMessage(TESTNET_P2WPKH, "hello world", signature);
-      expect(ok).toBe(true);
+      const result = await wallet.verifyMessage(TESTNET_P2WPKH, "hello world", signature);
+      expect(result.valid).toBe(true);
     });
 
     it("free function returns valid:true with recoveredPublicKey hex", async () => {
@@ -47,8 +47,8 @@ describe("verifyBitcoinMessage / BitcoinHeadlessWallet.verifyMessage", () => {
     it("returns false for a tampered message", async () => {
       const wallet = await makeWallet();
       const { signature } = await wallet.signMessage(TESTNET_P2WPKH, "hello world");
-      const ok = await wallet.verifyMessage(TESTNET_P2WPKH, "hello WORLD", signature);
-      expect(ok).toBe(false);
+      const result = await wallet.verifyMessage(TESTNET_P2WPKH, "hello WORLD", signature);
+      expect(result.valid).toBe(false);
     });
 
     it("returns false when verifying against an unrelated address", async () => {
@@ -56,8 +56,8 @@ describe("verifyBitcoinMessage / BitcoinHeadlessWallet.verifyMessage", () => {
       const { signature } = await wallet.signMessage(TESTNET_P2WPKH, "hello");
       // Valid testnet P2WPKH address from a different key — fixed string from bitcoinjs-lib test vectors.
       const unrelated = "tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx";
-      const ok = await wallet.verifyMessage(unrelated, "hello", signature);
-      expect(ok).toBe(false);
+      const result = await wallet.verifyMessage(unrelated, "hello", signature);
+      expect(result.valid).toBe(false);
     });
 
     it("free function flags malformed signatures with a reason", () => {
@@ -140,8 +140,8 @@ describe("verifyBitcoinMessage / BitcoinHeadlessWallet.verifyMessage", () => {
       // signing as P2WPKH should NOT verify against the wallet's P2TR address because the pubkey differs.
       const wallet = await makeWallet();
       const { signature } = await wallet.signMessage(TESTNET_P2WPKH, "different paths");
-      const ok = await wallet.verifyMessage(TESTNET_P2TR, "different paths", signature);
-      expect(ok).toBe(false);
+      const result = await wallet.verifyMessage(TESTNET_P2TR, "different paths", signature);
+      expect(result.valid).toBe(false);
     });
   });
 });

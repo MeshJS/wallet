@@ -1,3 +1,6 @@
+import type { TransactionsInfo } from "../../../types/transactions-info";
+import type { UTxO } from "../../../types/utxo";
+import { networkFromName } from "../../../address/bitcoin-address";
 import {
   AddressPurpose,
   AddressType,
@@ -7,8 +10,8 @@ import {
   BitcoinSignature,
   IBitcoinWallet,
   MessageSigningProtocols,
+  VerifyMessageResult,
 } from "../../../interfaces/bitcoin-wallet";
-import { networkFromName } from "../../../address/bitcoin-address";
 import { verifyBitcoinMessage } from "../../mesh/bitcoin-headless-wallet";
 
 /**
@@ -36,12 +39,19 @@ export type XverseResponse<T> =
   | { status: "success"; result: T }
   | { status: "error"; error: { code: number; message: string } }
   | { jsonrpc: "2.0"; result: T; id?: string | number | null }
-  | { jsonrpc: "2.0"; error: { code: number; message: string }; id?: string | number | null };
+  | {
+      jsonrpc: "2.0";
+      error: { code: number; message: string };
+      id?: string | number | null;
+    };
 
 /**
  * Typed error preserving the RPC error code so callers can distinguish
  * `USER_REJECTION` (-32000) from `ACCESS_DENIED` (-32002), etc.
  */
+/** Sats Connect `RpcErrorCode.ACCESS_DENIED` — app has not connected yet. */
+export const XVERSE_ACCESS_DENIED = -32002;
+
 export class XverseRpcError extends Error {
   readonly code: number;
   readonly method: string;
@@ -65,15 +75,12 @@ declare global {
 export function isXverseInstalled(): boolean {
   if (typeof globalThis === "undefined") return false;
   const w = globalThis as unknown as Window;
-  return Boolean(
-    w?.XverseProviders?.BitcoinProvider ?? w?.BitcoinProvider,
-  );
+  return Boolean(w?.XverseProviders?.BitcoinProvider ?? w?.BitcoinProvider);
 }
 
 function getProvider(): XverseBitcoinProvider {
   const w = globalThis as unknown as Window;
-  const provider =
-    w?.XverseProviders?.BitcoinProvider ?? w?.BitcoinProvider;
+  const provider = w?.XverseProviders?.BitcoinProvider ?? w?.BitcoinProvider;
   if (!provider) {
     throw new Error(
       "[XverseAdapter] Xverse provider not found on window. Install Xverse and reload.",
@@ -86,12 +93,20 @@ async function call<T>(
   method: string,
   params?: Record<string, unknown> | null,
 ): Promise<T> {
-  const response = (await getProvider().request<T>(method, params ?? null)) as
-    | { status?: string; result?: T; error?: { code: number; message: string }; jsonrpc?: string };
+  const response = (await getProvider().request<T>(method, params ?? null)) as {
+    status?: string;
+    result?: T;
+    error?: { code: number; message: string };
+    jsonrpc?: string;
+  };
 
   // sats-connect-normalised envelope: { status, result | error }
   if (response.status === "error" && response.error) {
-    throw new XverseRpcError(method, response.error.code, response.error.message);
+    throw new XverseRpcError(
+      method,
+      response.error.code,
+      response.error.message,
+    );
   }
   if (response.status === "success" && "result" in response) {
     return response.result as T;
@@ -99,7 +114,11 @@ async function call<T>(
   // Raw JSON-RPC 2.0 envelope: { jsonrpc, result | error }
   if (response.jsonrpc === "2.0") {
     if (response.error) {
-      throw new XverseRpcError(method, response.error.code, response.error.message);
+      throw new XverseRpcError(
+        method,
+        response.error.code,
+        response.error.message,
+      );
     }
     if ("result" in response) {
       return response.result as T;
@@ -109,7 +128,11 @@ async function call<T>(
   if (response && !("status" in response) && !("jsonrpc" in response)) {
     return response as unknown as T;
   }
-  throw new XverseRpcError(method, -1, "Unrecognised response envelope from Xverse");
+  throw new XverseRpcError(
+    method,
+    -1,
+    "Unrecognised response envelope from Xverse",
+  );
 }
 
 type XverseAddressItem = {
@@ -120,13 +143,62 @@ type XverseAddressItem = {
   walletType?: "software" | "ledger" | "keystone";
 };
 
-function normalizeAddressType(t: string): AddressType {
+type WalletConnectResult = {
+  addresses?: XverseAddressItem[];
+  /** Historical typo in some Xverse builds. */
+  addressses?: XverseAddressItem[];
+  walletType?: string;
+  id?: string;
+  network?: { bitcoin?: { name?: string } };
+};
+
+const DEFAULT_CONNECT_MESSAGE = "Connect to Mesh SDK";
+
+function normalizeAddressType(t: string): AddressType | null {
   const lower = t.toLowerCase();
   const known = Object.values(AddressType) as string[];
   if (known.includes(lower)) return lower as AddressType;
   // Xverse historically returns "p2sh" for nested-SegWit; map common aliases.
   if (lower === "p2sh-p2wpkh") return "p2sh" as AddressType;
-  throw new Error(`[XverseAdapter] Unknown addressType from provider: ${t}`);
+  // Unknown types (new Xverse versions may add them) are filtered out by the caller
+  // rather than throwing and breaking the entire getAddresses response.
+  return null;
+}
+
+function normalizePurpose(raw: string): AddressPurpose | null {
+  const known = Object.values(AddressPurpose) as string[];
+  if (known.includes(raw)) return raw as AddressPurpose;
+  return null;
+}
+
+function mapAddressItems(items: XverseAddressItem[]): BitcoinAddress[] {
+  const out: BitcoinAddress[] = [];
+  for (const a of items) {
+    const addressType = normalizeAddressType(a.addressType);
+    if (addressType === null) continue;
+    const purpose = normalizePurpose(a.purpose);
+    if (purpose === null) continue;
+    out.push({
+      address: a.address,
+      publicKey: a.publicKey,
+      purpose,
+      addressType,
+      walletType: (a.walletType ?? "software") as
+        | "software"
+        | "ledger"
+        | "keystone",
+    });
+  }
+  return out;
+}
+
+function parseAddressListResult(
+  result:
+    | XverseAddressItem[]
+    | { addresses?: XverseAddressItem[]; accounts?: XverseAddressItem[] },
+): XverseAddressItem[] {
+  if (Array.isArray(result)) return result;
+  return result.addresses ?? result.accounts ?? [];
 }
 
 /**
@@ -146,31 +218,82 @@ export class XverseAdapter implements IBitcoinWallet {
       );
     }
     const adapter = new XverseAdapter();
-    await adapter.requestAddresses([
-      AddressPurpose.Payment,
-      AddressPurpose.Ordinals,
-    ]);
+    await adapter.connect([AddressPurpose.Payment, AddressPurpose.Ordinals]);
     adapter.connected = true;
     return adapter;
   }
 
+  /**
+   * Establish a dApp connection per Sats Connect: `wallet_connect` grants read
+   * permission and returns addresses. Older Xverse builds fall back to
+   * `wallet_requestPermissions` + `getAddresses`.
+   */
+  private async connect(
+    purposes: AddressPurpose[],
+    message = DEFAULT_CONNECT_MESSAGE,
+  ): Promise<void> {
+    try {
+      await this.connectViaWalletConnect(purposes, message);
+      return;
+    } catch (err) {
+      if (
+        err instanceof XverseRpcError &&
+        err.code === -32601 /* METHOD_NOT_FOUND */
+      ) {
+        await this.connectViaPermissions(purposes, message);
+        return;
+      }
+      throw err;
+    }
+  }
+
+  private async connectViaWalletConnect(
+    purposes: AddressPurpose[],
+    message: string,
+  ): Promise<void> {
+    const result = await call<WalletConnectResult>("wallet_connect", {
+      addresses: purposes,
+      message,
+    });
+    const items = result.addresses ?? result.addressses ?? [];
+    this.cachedAddresses = mapAddressItems(items);
+  }
+
+  private async connectViaPermissions(
+    purposes: AddressPurpose[],
+    message: string,
+  ): Promise<void> {
+    await call<unknown>("wallet_requestPermissions", null);
+    await this.requestAddresses(purposes, message);
+  }
+
+  private async requestPermissions(): Promise<void> {
+    await call<unknown>("wallet_requestPermissions", null);
+  }
+
   private async requestAddresses(
     purposes: AddressPurpose[],
+    message = DEFAULT_CONNECT_MESSAGE,
   ): Promise<BitcoinAddress[]> {
-    const result = await call<{ addresses: XverseAddressItem[] }>(
-      "getAddresses",
-      { purposes, message: "Connect to Mesh SDK" },
-    );
-    const list = result.addresses.map((a) => ({
-      address: a.address,
-      publicKey: a.publicKey,
-      purpose: a.purpose as AddressPurpose,
-      addressType: normalizeAddressType(a.addressType),
-      walletType: (a.walletType ?? "software") as
-        | "software"
-        | "ledger"
-        | "keystone",
-    }));
+    try {
+      return await this.fetchAddresses(purposes, message);
+    } catch (err) {
+      if (err instanceof XverseRpcError && err.code === XVERSE_ACCESS_DENIED) {
+        await this.requestPermissions();
+        return this.fetchAddresses(purposes, message);
+      }
+      throw err;
+    }
+  }
+
+  private async fetchAddresses(
+    purposes: AddressPurpose[],
+    message: string,
+  ): Promise<BitcoinAddress[]> {
+    const result = await call<
+      XverseAddressItem[] | { addresses: XverseAddressItem[] }
+    >("getAddresses", { purposes, message });
+    const list = mapAddressItems(parseAddressListResult(result));
     this.cachedAddresses = list;
     return list;
   }
@@ -184,22 +307,27 @@ export class XverseAdapter implements IBitcoinWallet {
     try {
       result = await call<R>("wallet_getNetwork");
     } catch (err) {
-      if (err instanceof XverseRpcError && err.code === -32601 /* METHOD_NOT_FOUND */) {
+      if (
+        err instanceof XverseRpcError &&
+        err.code === -32601 /* METHOD_NOT_FOUND */
+      ) {
         result = await call<R>("getNetwork");
       } else {
         throw err;
       }
     }
     const raw =
-      (result as { name?: string }).name
-      ?? ((result as { bitcoin?: { name?: string } }).bitcoin?.name);
+      (result as { name?: string }).name ??
+      (result as { bitcoin?: { name?: string } }).bitcoin?.name;
     const lower = (raw ?? "").toLowerCase();
     if (lower === "mainnet") return "Mainnet";
     if (lower === "testnet4") return "Testnet4";
     // The IBitcoinWallet contract only models Mainnet/Testnet4. Signet,
     // Testnet3, Regtest etc. should surface loudly rather than silently
     // misreporting as Testnet4.
-    throw new Error(`[XverseAdapter] Unsupported network from provider: ${raw}`);
+    throw new Error(
+      `[XverseAdapter] Unsupported network from provider: ${raw}`,
+    );
   }
 
   async getAddresses(
@@ -221,24 +349,45 @@ export class XverseAdapter implements IBitcoinWallet {
     // both shapes so the adapter remains compatible across provider versions.
     const result = await call<
       AccountItem[] | { addresses?: AccountItem[]; accounts?: AccountItem[] }
-    >("getAccounts", { purposes: addressPurposes, message: "Connect to Mesh SDK" });
+    >("getAccounts", {
+      purposes: addressPurposes,
+      message: "Connect to Mesh SDK",
+    });
     const items: AccountItem[] = Array.isArray(result)
       ? result
       : (result.accounts ?? result.addresses ?? []);
-    return items.map((a) => ({
-      walletType: (a.walletType ?? "software") as
-        | "software"
-        | "ledger"
-        | "keystone",
-      address: a.address,
-      publicKey: a.publicKey,
-      purpose: a.purpose as AddressPurpose,
-      addressType: normalizeAddressType(a.addressType),
-    }));
+    return items
+      .map((a) => ({
+        walletType: (a.walletType ?? "software") as
+          | "software"
+          | "ledger"
+          | "keystone",
+        address: a.address,
+        publicKey: a.publicKey,
+        purpose: normalizePurpose(a.purpose),
+        addressType: normalizeAddressType(a.addressType),
+      }))
+      .filter(
+        (
+          a,
+        ): a is typeof a & {
+          addressType: NonNullable<typeof a.addressType>;
+          purpose: NonNullable<typeof a.purpose>;
+        } => a.addressType !== null && a.purpose !== null,
+      );
   }
 
   async getBalance(): Promise<BitcoinBalance> {
     const result = await call<BitcoinBalance>("getBalance");
+    if (
+      result.confirmed == null ||
+      result.unconfirmed == null ||
+      result.total == null
+    ) {
+      throw new Error(
+        "[XverseAdapter] getBalance returned an incomplete response from Xverse",
+      );
+    }
     return {
       confirmed: String(result.confirmed),
       unconfirmed: String(result.unconfirmed),
@@ -272,20 +421,22 @@ export class XverseAdapter implements IBitcoinWallet {
 
   /**
    * Verify a Bitcoin signed-message locally. Trustless — does not call the extension.
-   * Supports the ECDSA 65-byte recoverable format. BIP-322 signatures (which Xverse
-   * may produce for Taproot addresses) throw a clear "not yet supported" error rather
-   * than silently returning false, so callers can distinguish "invalid" from "unsupported".
+   * Supports the ECDSA 65-byte BIP-137 compact format. Non-ECDSA signatures (e.g. the
+   * BIP-322 format Xverse produces for Taproot addresses) return `{ valid: false }` rather
+   * than throwing, so callers can safely check `result.valid`.
    */
   async verifyMessage(
     address: string,
     message: string,
     signature: string,
-  ): Promise<boolean> {
+  ): Promise<VerifyMessageResult> {
     const decoded = Buffer.from(signature, "base64");
+    // BIP-322 / non-ECDSA signatures are not yet verifiable here.
     if (decoded.length !== 65) {
-      throw new Error(
-        "[XverseAdapter] verifyMessage only supports ECDSA (65-byte) signatures. BIP-322 verification is not yet implemented.",
-      );
+      return {
+        valid: false,
+        reason: "Unsupported signature format (expected 65-byte BIP-137 ECDSA)",
+      };
     }
     const networkName = await this.getNetwork();
     return verifyBitcoinMessage(
@@ -293,14 +444,13 @@ export class XverseAdapter implements IBitcoinWallet {
       message,
       signature,
       networkFromName(networkName),
-    ).valid;
+    );
   }
 
   /**
    * Xverse's Sats Connect exposes `sendTransfer` which prompts the user to sign
-   * AND broadcast in one step — there is no "sign-only" variant. We surface the
-   * resulting txid, matching the contract that `signTransfer` returns a tx hex
-   * or txid string.
+   * AND broadcast in one step — there is no "sign-only" variant.
+   * Returns the broadcast txid, satisfying the `IBitcoinWallet.signTransfer` contract.
    */
   async signTransfer(
     recipients: { address: string; amount: number }[],
@@ -319,11 +469,86 @@ export class XverseAdapter implements IBitcoinWallet {
     signInputs?: { [x: string]: number[] } | undefined;
     broadcast?: boolean | undefined;
   }): Promise<string> {
-    const result = await call<{ psbt: string; txid?: string }>("signPsbt", {
+    const result = await call<{ psbt?: string; txid?: string }>("signPsbt", {
       psbt: signConfig.psbt,
       signInputs: signConfig.signInputs,
-      broadcast: signConfig.broadcast,
+      broadcast: signConfig.broadcast ?? false,
     });
-    return signConfig.broadcast && result.txid ? result.txid : result.psbt;
+    if (signConfig.broadcast) {
+      if (!result.txid) {
+        throw new Error(
+          "[XverseAdapter] signPsbt with broadcast=true did not return a txid",
+        );
+      }
+      return result.txid;
+    }
+    if (!result.psbt) {
+      throw new Error("[XverseAdapter] signPsbt did not return a signed PSBT");
+    }
+    return result.psbt;
+  }
+
+  /**
+   * Fetch UTXOs for the connected wallet via Sats Connect.
+   * Xverse exposes `wallet_getUtxos` on newer builds; for older builds that
+   * don't support it this will throw a clear METHOD_NOT_FOUND error.
+   */
+  async fetchUTXOs(
+    purposes: AddressPurpose[] = [
+      AddressPurpose.Payment,
+      AddressPurpose.Ordinals,
+    ],
+  ): Promise<(UTxO & { address: string; purpose: AddressPurpose })[]> {
+    const addresses = await this.getAddresses(purposes);
+    const results = await Promise.all(
+      addresses.map(async (addr) => {
+        const utxos = await call<UTxO[]>("wallet_getUtxos", {
+          address: addr.address,
+        });
+        return utxos.map((u) => ({
+          ...u,
+          address: addr.address,
+          purpose: addr.purpose,
+        }));
+      }),
+    );
+    return results.flat();
+  }
+
+  /**
+   * Fetch transaction history for the connected wallet via Sats Connect.
+   * Xverse exposes `wallet_getTransactions` on newer builds.
+   */
+  async getTransactionHistory(
+    options: {
+      purposes?: AddressPurpose[];
+      lastSeenTxid?: string;
+    } = {},
+  ): Promise<
+    (TransactionsInfo & { address: string; purpose: AddressPurpose })[]
+  > {
+    const purposes = options.purposes ?? [
+      AddressPurpose.Payment,
+      AddressPurpose.Ordinals,
+    ];
+    const addresses = await this.getAddresses(purposes);
+    const results = await Promise.all(
+      addresses.map(async (addr) => {
+        const txs = await call<TransactionsInfo[]>("wallet_getTransactions", {
+          address: addr.address,
+          ...(options.lastSeenTxid ? { afterTxid: options.lastSeenTxid } : {}),
+        });
+        return txs.map((tx) => ({
+          ...tx,
+          address: addr.address,
+          purpose: addr.purpose,
+        }));
+      }),
+    );
+    return results.flat().sort((a, b) => {
+      if (!a.status.confirmed && b.status.confirmed) return -1;
+      if (a.status.confirmed && !b.status.confirmed) return 1;
+      return (b.status.block_height ?? 0) - (a.status.block_height ?? 0);
+    });
   }
 }
