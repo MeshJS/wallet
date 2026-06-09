@@ -7,3 +7,24 @@ export * from "./cardano/wallet/browser/mesh-browser-wallet";
 export * from "./cardano/wallet/mesh/cardano-headless-wallet";
 export * from "./cardano/wallet/mesh/mesh-wallet";
 export * from "./cardano/interfaces/cardano-wallet";
+export {
+  AddressPurpose,
+  AddressType as BitcoinAddressType,
+  MessageSigningProtocols,
+} from "./bitcoin/interfaces/bitcoin-wallet";
+export type {
+  BitcoinAccount,
+  BitcoinAddress,
+  BitcoinBalance,
+  BitcoinSignature,
+  IBitcoinWallet,
+  VerifyMessageResult,
+} from "./bitcoin/interfaces/bitcoin-wallet";
+export * from "./bitcoin/interfaces/bitcoin-provider";
+export * from "./bitcoin/types";
+export * from "./bitcoin/address/bitcoin-address";
+export * from "./bitcoin/address/bitcoin-address-manager";
+export * from "./bitcoin/wallet/mesh/bitcoin-headless-wallet";
+export * from "./bitcoin/wallet/browser/bitcoin-browser-wallet";
+export * from "./bitcoin/wallet/browser/adapters/xverse-adapter";
+export * from "./multi-chain/interfaces/multi-chain-wallet";
