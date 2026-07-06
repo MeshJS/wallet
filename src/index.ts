@@ -7,6 +7,9 @@ export * from "./cardano/wallet/browser/mesh-browser-wallet";
 export * from "./cardano/wallet/mesh/cardano-headless-wallet";
 export * from "./cardano/wallet/mesh/mesh-wallet";
 export * from "./cardano/interfaces/cardano-wallet";
+export * from "./cardano/cip30/errors";
+export * from "./cardano/cip30/types";
+export * from "./cardano/cip30/cip30-api";
 export {
   AddressPurpose,
   AddressType as BitcoinAddressType,
