@@ -16,7 +16,25 @@ import {
   RawCborMap,
 } from "@harmoniclabs/cbor";
 import { blake2b } from "blakejs";
-import JSONBig from "json-bigint";
+
+/**
+ * Semantic CBOR node comparisons. Parsed nodes carry internal metadata
+ * (e.g. `subCborRef`) that constructed nodes lack, so serialized-JSON
+ * equality between the two is unreliable — compare the decoded values.
+ */
+function cborKeyIsText(k: unknown, text: string): boolean {
+  return k instanceof CborText && k.text === text;
+}
+
+function cborKeyIsInt(k: unknown, n: number | bigint): boolean {
+  return (
+    (k instanceof CborUInt || k instanceof CborNegInt) && k.num === BigInt(n)
+  );
+}
+
+function cborIsSimpleTrue(v: unknown): boolean {
+  return v instanceof CborSimple && v.simple === true;
+}
 
 class CoseSign1 {
   private protectedMap: CborMap;
@@ -38,12 +56,7 @@ class CoseSign1 {
     this.payload = payload.payload;
 
     if (
-      !this.unProtectedMap.map.find((value) => {
-        return (
-          JSONBig.stringify(value.k) ===
-          JSONBig.stringify(new CborText("hashed"))
-        );
-      })
+      !this.unProtectedMap.map.find((value) => cborKeyIsText(value.k, "hashed"))
     ) {
       this.unProtectedMap.map.push({
         k: new CborText("hashed"),
@@ -158,24 +171,14 @@ class CoseSign1 {
     if (!this.unProtectedMap) throw Error("Invalid unprotected map");
     if (!this.payload) throw Error("Invalid payload");
 
-    const hashedIndex = this.unProtectedMap.map.findIndex((value) => {
-      return (
-        JSONBig.stringify(value.k) === JSONBig.stringify(new CborText("hashed"))
-      );
-    });
+    const hashedIndex = this.unProtectedMap.map.findIndex((value) =>
+      cborKeyIsText(value.k, "hashed"),
+    );
 
     const hashed = this.unProtectedMap.map[hashedIndex];
-    if (
-      hashed &&
-      JSONBig.stringify(hashed.v) === JSONBig.stringify(new CborSimple(true))
-    )
+    if (hashed && cborIsSimpleTrue(hashed.v))
       throw Error("Payload already hashed");
-    if (
-      hashed &&
-      (JSONBig.stringify(hashed.v) ===
-        JSONBig.stringify(new CborSimple(true))) !=
-        false
-    )
+    if (hashed && cborIsSimpleTrue(hashed.v) != false)
       throw Error("Invalid unprotected map");
 
     this.unProtectedMap.map.splice(hashedIndex, 1);
@@ -185,20 +188,17 @@ class CoseSign1 {
   }
 
   getAddress(): Buffer {
-    const address = this.protectedMap.map.find((value) => {
-      return (
-        JSONBig.stringify(value.k) ===
-        JSONBig.stringify(new CborText("address"))
-      );
-    });
+    const address = this.protectedMap.map.find((value) =>
+      cborKeyIsText(value.k, "address"),
+    );
     if (!address) throw Error("Address not found");
     return Buffer.from((address.v as CborBytes).bytes);
   }
 
   getPublicKey(): Buffer {
-    const publicKey = this.protectedMap.map.find((value) => {
-      return JSONBig.stringify(value.k) === JSONBig.stringify(new CborUInt(4));
-    });
+    const publicKey = this.protectedMap.map.find((value) =>
+      cborKeyIsInt(value.k, 4),
+    );
     if (!publicKey) throw Error("Public key not found");
     return Buffer.from((publicKey.v as CborBytes).bytes);
   }
@@ -214,12 +214,9 @@ class CoseSign1 {
 
 const getPublicKeyFromCoseKey = (cbor: string): Buffer => {
   const decodedCoseKey = Cbor.parse(cbor) as CborMap;
-  const publicKeyEntry = decodedCoseKey.map.find((value) => {
-    return (
-      JSONBig.stringify(value.k) ===
-      JSONBig.stringify(new CborNegInt(BigInt(-2)))
-    );
-  });
+  const publicKeyEntry = decodedCoseKey.map.find((value) =>
+    cborKeyIsInt(value.k, -2),
+  );
 
   if (publicKeyEntry) {
     return Buffer.from((publicKeyEntry.v as CborBytes).bytes);
