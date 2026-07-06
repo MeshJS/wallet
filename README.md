@@ -45,7 +45,7 @@ This package uses a two-tier class hierarchy for both headless and browser walle
 | `CardanoHeadlessWallet` | CIP-30 strict headless wallet (raw hex/CBOR returns) | You need raw CIP-30 output without conversion |
 | `MeshCardanoBrowserWallet` | Full-featured browser wallet wrapper with convenience methods | dApp frontend integration with browser wallets (Eternl, Nami, etc.) |
 | `CardanoBrowserWallet` | CIP-30 strict browser wallet wrapper (raw hex/CBOR returns) | You need raw CIP-30 passthrough from browser wallets |
-| `InMemoryBip32` | BIP32 key derivation from mnemonic (keys stored in memory) | Deriving payment/stake/DRep keys from a mnemonic |
+| `CardanoInMemoryBip32` | BIP32 key derivation from mnemonic (keys stored in memory) | Deriving payment/stake/DRep keys from a mnemonic |
 | `BaseSigner` | Ed25519 signer from raw private keys | Signing with raw private keys (normal or extended) |
 | `CardanoAddress` | Cardano address construction and utilities | Building addresses from credentials |
 | `ICardanoWallet` | Interface definition for Cardano wallets | Type-checking and implementing custom wallets |
@@ -104,13 +104,13 @@ const witnessSet = await wallet.signTx(unsignedTxHex);
 
 ### Custom Derivation Paths
 
-Use `InMemoryBip32` directly for custom key derivation:
+Use `CardanoInMemoryBip32` directly for custom key derivation:
 
 ```typescript
-import { InMemoryBip32 } from "@meshsdk/wallet";
+import { CardanoInMemoryBip32 } from "@meshsdk/wallet";
 
 const HARDENED_OFFSET = 0x80000000;
-const bip32 = await InMemoryBip32.fromMnemonic(
+const bip32 = await CardanoInMemoryBip32.fromMnemonic(
   "globe cupboard camera ...".split(" ")
 );
 
@@ -237,7 +237,7 @@ const signature = await wallet.signData(addressBech32, hexPayload);
 
 ## Low-Level Components
 
-### InMemoryBip32
+### CardanoInMemoryBip32
 
 Derives Ed25519 signing keys from a BIP39 mnemonic. Keys are held in memory. You can implement your own `Bip32` class (e.g., HSM-backed) as long as it satisfies the same interface.
 
