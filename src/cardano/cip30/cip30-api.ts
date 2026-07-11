@@ -14,7 +14,7 @@ import {
   TxSendErrorCode,
   TxSignErrorCode,
 } from "./errors";
-import { Cip30Extension, ICip30Api, ICip30InitialApi, Paginate } from "./types";
+import { Cip30Extension, CreateCip30WalletOptions, ICip30Api, ICip30InitialApi, Paginate } from "./types";
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -147,9 +147,6 @@ function isScriptAddress(addressStr: string): boolean {
     );
   }
   const props = address.getProps();
-  // Note: @cardano-sdk/core's RewardAddress.getProps() carries the stake
-  // credential in `paymentPart` (delegationPart is undefined for reward
-  // addresses), so paymentPart is the signing credential for every type.
   const credential =
     props.type === Cardano.AddressType.RewardKey ||
     props.type === Cardano.AddressType.RewardScript
@@ -337,34 +334,6 @@ export function createCip30Api(
   };
 }
 
-export interface CreateCip30WalletOptions {
-  /** The underlying wallet to wrap. */
-  wallet: ICardanoWallet;
-  /** Wallet name, surfaced as `ICip30InitialApi.name`. */
-  name: string;
-  /** Wallet icon (data URI or URL), surfaced as `ICip30InitialApi.icon`. */
-  icon?: string;
-  /**
-   * Extensions (beyond the base CIP-30 API) this wallet is willing to
-   * negotiate in `enable()`. Defaults to `[]`: the base CIP-30 API is always
-   * implicit in exposing this object at all, so `supportedExtensions` here
-   * only needs to list *additional* CIPs (e.g. CIP-95 governance) that this
-   * adapter doesn't otherwise implement. Callers that do wire up extra CIPs
-   * should pass them explicitly.
-   */
-  supportedExtensions?: Cip30Extension[];
-  /**
-   * Whether `enable()` auto-approves without prompting. Defaults to `true`,
-   * since a headless wallet has no UI to prompt with. Set to `false` (or
-   * supply `approve`) to exercise the `Refused(-3)` path, e.g. in tests.
-   */
-  autoApprove?: boolean;
-  /**
-   * Optional approval hook, called with the negotiated (already
-   * intersected) extension list. Overrides `autoApprove` when provided.
-   */
-  approve?: (extensions: Cip30Extension[]) => boolean | Promise<boolean>;
-}
 
 /**
  * Wraps an `ICardanoWallet` as a simulated CIP-30 initial API

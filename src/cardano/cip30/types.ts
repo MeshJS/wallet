@@ -1,8 +1,26 @@
 import { DataSignature } from "@meshsdk/common";
 
-/**
- * CIP-30 pagination window. Zero-indexed per spec: `page: 0` is the first page.
- */
+import { ICardanoWallet } from "../interfaces/cardano-wallet";
+
+export type DecodedAddress = {
+  hex: string;
+  bech32: string;
+};
+
+export type DecodedAsset = {
+  policyId: string;
+  assetName: string;
+  quantity: bigint;
+  unit: string;
+};
+
+export type DecodedBalance = {
+  cbor: string;
+  lovelace: bigint;
+  assets: DecodedAsset[];
+};
+
+
 export type Paginate = {
   page: number;
   limit: number;
@@ -65,4 +83,17 @@ export interface ICip30InitialApi {
   readonly supportedExtensions: Cip30Extension[];
   isEnabled(): Promise<boolean>;
   enable(args?: { extensions?: Cip30Extension[] }): Promise<ICip30Api>;
+}
+
+/**
+ * Options for creating a CIP-30 wallet.
+ */
+export interface CreateCip30WalletOptions {
+  /** The underlying wallet to wrap. */
+  wallet: ICardanoWallet;
+  name: string;
+  icon?: string;
+  supportedExtensions?: Cip30Extension[];
+  autoApprove?: boolean;
+  approve?: (extensions: Cip30Extension[]) => boolean | Promise<boolean>;
 }

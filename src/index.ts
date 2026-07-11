@@ -10,6 +10,7 @@ export * from "./cardano/interfaces/cardano-wallet";
 export * from "./cardano/cip30/errors";
 export * from "./cardano/cip30/types";
 export * from "./cardano/cip30/cip30-api";
+export * from "./cardano/cip30/deserializers";
 export {
   AddressPurpose,
   AddressType as BitcoinAddressType,
