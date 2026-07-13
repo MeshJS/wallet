@@ -18,6 +18,7 @@ npm install @meshsdk/wallet
 - [Architecture Overview](#architecture-overview)
 - [Exported Classes](#exported-classes)
 - [Headless Wallet (Server-Side)](#headless-wallet-server-side)
+- [Simulated CIP-30 API (headless)](#simulated-cip-30-api-headless)
 - [Browser Wallet (Client-Side)](#browser-wallet-client-side)
 - [Bitcoin Headless Wallet](#bitcoin-headless-wallet)
 - [Low-Level Components](#low-level-components)
@@ -40,16 +41,20 @@ This package uses a two-tier class hierarchy for both headless and browser walle
 
 ## Exported Classes
 
-| Class                       | Purpose                                                       | Use When                                                            |
-| --------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------- |
-| `MeshCardanoHeadlessWallet` | Full-featured headless wallet with convenience methods        | Server-side signing, backend transaction building, testing          |
-| `CardanoHeadlessWallet`     | CIP-30 strict headless wallet (raw hex/CBOR returns)          | You need raw CIP-30 output without conversion                       |
-| `MeshCardanoBrowserWallet`  | Full-featured browser wallet wrapper with convenience methods | dApp frontend integration with browser wallets (Eternl, Nami, etc.) |
-| `CardanoBrowserWallet`      | CIP-30 strict browser wallet wrapper (raw hex/CBOR returns)   | You need raw CIP-30 passthrough from browser wallets                |
-| `InMemoryBip32`             | BIP32 key derivation from mnemonic (keys stored in memory)    | Deriving payment/stake/DRep keys from a mnemonic                    |
-| `BaseSigner`                | Ed25519 signer from raw private keys                          | Signing with raw private keys (normal or extended)                  |
-| `CardanoAddress`            | Cardano address construction and utilities                    | Building addresses from credentials                                 |
-| `ICardanoWallet`            | Interface definition for Cardano wallets                      | Type-checking and implementing custom wallets                       |
+| Class                                                                                               | Purpose                                                                                                                                | Use When                                                                                            |
+| --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `MeshCardanoHeadlessWallet`                                                                         | Full-featured headless wallet with convenience methods                                                                                 | Server-side signing, backend transaction building, testing                                          |
+| `CardanoHeadlessWallet`                                                                             | CIP-30 strict headless wallet (raw hex/CBOR returns)                                                                                   | You need raw CIP-30 output without conversion                                                       |
+| `MeshCardanoBrowserWallet`                                                                          | Full-featured browser wallet wrapper with convenience methods                                                                          | dApp frontend integration with browser wallets (Eternl, Nami, etc.)                                 |
+| `CardanoBrowserWallet`                                                                              | CIP-30 strict browser wallet wrapper (raw hex/CBOR returns)                                                                          | You need raw CIP-30 passthrough from browser wallets                                                |
+| `CardanoInMemoryBip32`                                                                              | BIP32 key derivation from mnemonic (keys stored in memory)                                                                             | Deriving payment/stake/DRep keys from a mnemonic                                                    |
+| `BaseSigner`                                                                                        | Ed25519 signer from raw private keys                                                                                                   | Signing with raw private keys (normal or extended)                                                  |
+| `CardanoAddress`                                                                                    | Cardano address construction and utilities                                                                                             | Building addresses from credentials                                                                 |
+| `ICardanoWallet`                                                                                    | Interface definition for Cardano wallets                                                                                               | Type-checking and implementing custom wallets                                                       |
+| `createCip30Wallet`                                                                                 | Wraps an `ICardanoWallet` as a simulated CIP-30 initial API (`window.cardano.<name>`-shaped), with `enable()` extension negotiation  | dApp integration tests / server-side agents that need a real `window.cardano`-shaped API, no browser |
+| `createCip30Api`                                                                                    | Wraps an `ICardanoWallet` as a spec-exact `ICip30Api` directly, without extension negotiation                                        | Advanced: you already have your own `enable()` gating and just need the spec-exact endpoints        |
+| `ICip30Api` / `ICip30InitialApi`                                                                    | Interface definitions for the CIP-30 API surface                                                                                       | Type-checking and implementing custom CIP-30 adapters                                               |
+| `Cip30APIError`, `Cip30PaginateError`, `Cip30TxSignError`, `Cip30DataSignError`, `Cip30TxSendError` | CIP-30 error classes (spec-exact wire shapes: `{code, info}` or `{maxSize}`)                                                           | Catching and pattern-matching on typed CIP-30 errors instead of plain `Error`                     |
 
 ---
 
@@ -105,13 +110,13 @@ const witnessSet = await wallet.signTx(unsignedTxHex);
 
 ### Custom Derivation Paths
 
-Use `InMemoryBip32` directly for custom key derivation:
+Use `CardanoInMemoryBip32` directly for custom key derivation:
 
 ```typescript
-import { InMemoryBip32 } from "@meshsdk/wallet";
+import { CardanoInMemoryBip32 } from "@meshsdk/wallet";
 
 const HARDENED_OFFSET = 0x80000000;
-const bip32 = await InMemoryBip32.fromMnemonic(
+const bip32 = await CardanoInMemoryBip32.fromMnemonic(
   "globe cupboard camera ...".split(" "),
 );
 
@@ -137,6 +142,66 @@ const txWitnessSet = CardanoSigner.signTx(txHex, [paymentSigner]);
 // Returns full signed transaction CBOR
 const signedTx = CardanoSigner.signTx(txHex, [paymentSigner], true);
 ```
+
+---
+
+## Simulated CIP-30 API (headless)
+
+`createCip30Wallet()` wraps any `ICardanoWallet` (e.g. `MeshCardanoHeadlessWallet`) as a full simulated CIP-30 API — the same shape a dApp sees at `window.cardano.<name>` in a browser, but driven by a real signing wallet with zero browser and zero extension. This is the use case for dApp integration tests or server-side agents that need to exercise a genuine CIP-30 flow (`enable()` → `getUtxos()` → `signTx()` → ...) without a browser wallet extension in the loop.
+
+```typescript
+import { MeshCardanoHeadlessWallet, AddressType, createCip30Wallet } from "@meshsdk/wallet";
+import { OfflineFetcher } from "@meshsdk/provider";
+
+const wallet = await MeshCardanoHeadlessWallet.fromMnemonic({
+  mnemonic: "globe cupboard camera ...".split(" "),
+  networkId: 0,
+  walletAddressType: AddressType.Base,
+  fetcher: new OfflineFetcher("preprod"),
+});
+
+// Wrap the wallet as a full simulated CIP-30 wallet — exactly what a dApp
+// sees from window.cardano.<name>.
+const cip30 = createCip30Wallet({ wallet, name: "mesh-headless" });
+
+await cip30.isEnabled();          // false, until enable() is called
+const api = await cip30.enable(); // negotiates extensions, auto-approves by default
+
+// Spec-exact endpoints: amount filtering, pagination, null semantics.
+const utxos = await api.getUtxos(amountCbor, { page: 0, limit: 10 }); // null if amount unmet
+const collateral = await api.getCollateral({ amount: coinCbor });
+
+try {
+  await api.signTx(txCbor);
+} catch (error) {
+  // error is a Cip30TxSignError: { code: 1 | 2, info: string } — not a bare Error
+  console.error(error.code, error.info);
+}
+```
+
+`enable()` auto-approves by default, since a headless wallet has no UI to prompt with. Pass `autoApprove: false` or a custom `approve` hook to exercise the `Refused(-3)` path (e.g. in tests).
+
+### Provider attachment (A3)
+
+Because `createCip30Wallet` / `createCip30Api` only depend on the wallet's `ICardanoWallet` interface, swapping the underlying `IFetcher` (or `ISubmitter`) is a one-line change — nothing in the adapter or wallet code needs to know which provider it's talking to:
+
+```typescript
+import { BlockfrostProvider } from "@meshsdk/provider";
+
+const provider = new BlockfrostProvider("<key>");
+
+const wallet = await MeshCardanoHeadlessWallet.fromMnemonic({
+  mnemonic: "globe cupboard camera ...".split(" "),
+  networkId: 0,
+  walletAddressType: AddressType.Base,
+  fetcher: provider,   // swapped from OfflineFetcher — same code, real network
+  submitter: provider,
+});
+
+const cip30 = createCip30Wallet({ wallet, name: "mesh-headless" });
+```
+
+See [`test/cardano/cip30/provider-attachment.test.ts`](./test/cardano/cip30/provider-attachment.test.ts) for the proof: two independently-built `IFetcher` implementations fed identical fixture data produce identical `getUtxos()` / `getBalance()` / `getCollateral()` results.
 
 ---
 
@@ -248,7 +313,7 @@ const psbtBase64 = await wallet.signPsbt({ psbt, signInputs }); // P2WPKH + P2TR
 
 ## Low-Level Components
 
-### InMemoryBip32
+### CardanoInMemoryBip32
 
 Derives Ed25519 signing keys from a BIP39 mnemonic. Keys are held in memory. You can implement your own `Bip32` class (e.g., HSM-backed) as long as it satisfies the same interface.
 
@@ -267,9 +332,41 @@ Signs Cardano transactions given an array of `ISigner` instances. Can return eit
 
 ## CIP-30 Compatibility
 
-Both `MeshCardanoHeadlessWallet` and `MeshCardanoBrowserWallet` provide CIP-30 compatible methods: `getBalance`, `getChangeAddress`, `getNetworkId`, `getCollateral`, `getUtxos`, `getRewardAddresses`, `signTx`, `signData`, `submitTx`.
+Both `MeshCardanoHeadlessWallet` and `MeshCardanoBrowserWallet` provide CIP-30 compatible methods: `getBalance`, `getChangeAddress`, `getNetworkId`, `getCollateral`, `getUtxos`, `getRewardAddresses`, `signTx`, `signData`, `submitTx`. For the headless side, `createCip30Wallet()` (see [Simulated CIP-30 API (headless)](#simulated-cip-30-api-headless)) wraps these into a spec-exact adapter — params, null semantics, and typed errors matching [CIP-30](https://cips.cardano.org/cips/cip30/) exactly.
 
-**Important caveat for headless wallets:** The headless wallet simulates CIP-30 using a data provider (e.g., Blockfrost). It does not perform key derivation across multiple indices — it only derives keys at index 0 on all derivation paths (payment, stake, DRep). This means `getBalance` or `getUtxos` may return different results than a real browser wallet using the same mnemonic, since real wallets index multiple key derivations.
+**Important caveat for headless wallets:** The headless wallet simulates CIP-30 using a data provider (e.g., Blockfrost). It does not perform key derivation across multiple indices — it only derives keys at index 0 on all derivation paths (payment, stake, DRep). This means `getBalance` or `getUtxos` may return different results than a real browser wallet using the same mnemonic, since real wallets index multiple key derivations. This is the "stateless single-address wallet" caveat referenced throughout the conformance matrix below.
+
+### Conformance matrix
+
+Endpoints implemented by the `createCip30Wallet()` / `createCip30Api()` adapter (`src/cardano/cip30/`), checked against the CIP-30 spec:
+
+**Initial API** (`window.cardano.<name>`, before `enable()`):
+
+| Endpoint | Status | Notes |
+|---|---|---|
+| `apiVersion` | ✅ Conformant (adapter) | Always `"1"` |
+| `name` | ✅ Conformant (adapter) | Set via `createCip30Wallet({ name })` |
+| `icon` | ✅ Conformant (adapter) | Data URI or URL; defaults to `""` |
+| `supportedExtensions` | ✅ Conformant (adapter) | Defaults to `[]` — only lists extensions *beyond* the base CIP-30 API (e.g. CIP-95) |
+| `isEnabled()` | ✅ Conformant (adapter) | Reflects whether `enable()` has previously succeeded |
+| `enable(extensions?)` | ✅ Conformant (adapter) | Extension negotiation (requested ∩ supported → granted). Auto-approves by default — a headless wallet has no UI to prompt with — configurable via `autoApprove`/`approve` to exercise `Refused(-3)` |
+
+**Full API** (returned by `enable()`):
+
+| Endpoint | Status | Notes |
+|---|---|---|
+| `getExtensions()` | ✅ Conformant (adapter) | Returns the extensions granted during `enable()` |
+| `getNetworkId()` | ✅ Conformant (adapter) | |
+| `getUtxos(amount?, paginate?)` | ✅ Conformant (adapter) | `amount` is `cbor<Value>`; UTxOs are selected until the merged value covers it, `null` if unmet. `paginate` throws `PaginateError{maxSize}` past the last page |
+| `getBalance()` | ✅ Conformant (adapter) | |
+| `getUsedAddresses(paginate?)` | ✅ Conformant (adapter)* | *Stateless single-address wallet — see caveat above. Paginated with `PaginateError{maxSize}` |
+| `getUnusedAddresses()` | ✅ Conformant (adapter)* | *Same single-address caveat: the wallet is stateless and cannot track usage, so this always returns the one derived address (never empty) — a deviation from real used/unused semantics |
+| `getChangeAddress()` | ✅ Conformant (adapter) | |
+| `getRewardAddresses()` | ✅ Conformant (adapter) | |
+| `getCollateral(params?)` | ✅ Conformant (adapter) | `params.amount` is `cbor<Coin>`, defaults to 5 ADA. Pure-ADA UTxOs only, `null` if unmet. Deprecated in the CIP-30 spec (superseded by CIP-40) but implemented since wallets still call it |
+| `signTx(tx, partialSign?)` | ✅ Conformant (adapter) | Throws `TxSignError(ProofGeneration = 1)` when signers can't be resolved. `UserDeclined(2)` is unreachable — the headless wallet has no decline hook for signing (only `enable()` does) |
+| `signData(addr, payload)` | ✅ Conformant (adapter) | Accepts bech32 **or** hex address; throws `DataSignError(ProofGeneration = 1)` / `AddressNotPK(2)`. `UserDeclined(3)` is unreachable — no decline hook for signing |
+| `submitTx(tx)` | ✅ Conformant (adapter) | Throws `TxSendError(2)` on node rejection. `Refused(1)` is unreachable — `ISubmitter` has no refusal signal, only success or throw |
 
 ---
 
