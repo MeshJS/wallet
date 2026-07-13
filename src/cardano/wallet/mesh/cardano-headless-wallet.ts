@@ -1,6 +1,13 @@
 import { Cardano, Serialization, setInConwayEra } from "@cardano-sdk/core";
+import { HexBlob } from "@cardano-sdk/util";
 
-import { DataSignature, IFetcher, ISubmitter, UTxO } from "@meshsdk/common";
+import {
+  DataSignature,
+  IFetcher,
+  isHexString,
+  ISubmitter,
+  UTxO,
+} from "@meshsdk/common";
 
 import { CardanoInMemoryBip32 } from "../../../bip32/cardano-in-memory-bip32";
 import { AddressType } from "../../address/cardano-address";
@@ -279,15 +286,28 @@ export class CardanoHeadlessWallet implements ICardanoWallet {
   /**
    * Get the used addresses for the wallet.
    *
-   * NOTE: This method completely deviates from CIP-30 getUsedAddresses, as this wallet is stateless
-   * it is impossible to track which addresses have been used. This method simply returns the wallet's main address.
+   * When a fetcher is configured, "used" is derived from the distinct set of addresses
+   * holding the wallet's UTxOs (i.e. addresses with on-chain activity). Without a fetcher,
+   * or if the fetcher finds no UTxOs, this falls back to the wallet's main address, since
+   * a stateless wallet has no other way to know which addresses have been used.
    *
    * It will be effective to be used as a single address wallet.
    *
    * @returns {Promise<string[]>} A promise that resolves to an array of used addresses in hex format
    */
   async getUsedAddresses(): Promise<string[]> {
-    //TODO: Should iterate over all utxos to get the used addresses
+    if (this.fetcher) {
+      const utxos = await this.fetchAccountUtxos();
+      if (utxos.length > 0) {
+        const usedBech32Addresses = new Set(
+          utxos.map((utxo) => utxo.output.address),
+        );
+        return Array.from(usedBech32Addresses).map((bech32Address) =>
+          Cardano.Address.fromBech32(bech32Address).toBytes().toString(),
+        );
+      }
+    }
+
     const address = await this.addressManager.getNextAddress(
       this.walletAddressType,
     );
@@ -379,20 +399,23 @@ export class CardanoHeadlessWallet implements ICardanoWallet {
     return await CardanoSigner.signTx(tx, signers, false);
   }
 
-  async signData(addressBech32: string, data: string): Promise<DataSignature> {
-    let targetAddressBech32 = addressBech32;
-    if (!targetAddressBech32) {
-      const address = await this.addressManager.getNextAddress(
+  async signData(address: string, data: string): Promise<DataSignature> {
+    let targetAddress = address;
+    if (!targetAddress) {
+      const nextAddress = await this.addressManager.getNextAddress(
         this.walletAddressType,
       );
-      targetAddressBech32 = address.getAddressBech32();
+      targetAddress = nextAddress.getAddressBech32();
     }
 
-    const address = Cardano.Address.fromBech32(targetAddressBech32);
-    if (!address) {
+    // Accept either bech32 (the historical shape) or hex (per CIP-30) addresses.
+    const resolvedAddress = isHexString(targetAddress)
+      ? Cardano.Address.fromBytes(HexBlob(targetAddress))
+      : Cardano.Address.fromBech32(targetAddress);
+    if (!resolvedAddress) {
       throw new Error("[CardanoWallet] Invalid address");
     }
-    const addressProps = address.getProps();
+    const addressProps = resolvedAddress.getProps();
 
     let credentialHash: string;
     if (
@@ -417,7 +440,11 @@ export class CardanoHeadlessWallet implements ICardanoWallet {
       );
     }
 
-    return await CardanoSigner.signData(data, address.toBytes(), signer);
+    return await CardanoSigner.signData(
+      data,
+      resolvedAddress.toBytes(),
+      signer,
+    );
   }
 
   public async fetchAccountUtxos(): Promise<UTxO[]> {
