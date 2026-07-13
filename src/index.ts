@@ -21,9 +21,6 @@ export type {
   VerifyMessageResult,
 } from "./bitcoin/interfaces/bitcoin-wallet";
 export * from "./bitcoin/interfaces/bitcoin-provider";
-export { ProviderHttpError } from "./bitcoin/providers/common";
-export type { HttpErrorDetails } from "./bitcoin/providers/common";
-export * from "./bitcoin/providers/maestro";
 export * from "./bitcoin/types";
 export * from "./bitcoin/utils/coin-selection";
 export * from "./bitcoin/address/bitcoin-address";

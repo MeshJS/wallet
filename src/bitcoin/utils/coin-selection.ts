@@ -16,11 +16,16 @@ export type SelectableUTxO = {
 };
 
 export type CoinSelectionResult<T extends SelectableUTxO> = {
-  /** UTxOs chosen to fund the transaction, in selection order. */
   selectedUtxos: T[];
-  /** Change value in satoshis; 0 when change would be sub-dust (absorbed as fee). */
   change: number;
 };
+
+export type CoinSelectionStrategy = <T extends SelectableUTxO>(
+  utxos: T[],
+  targetAmount: number,
+  feeRate: number,
+  numRecipients: number,
+) => CoinSelectionResult<T>;
 
 /**
  * P2WPKH dust threshold under default relay policy (Bitcoin Core ~0.21+):

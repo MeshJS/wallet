@@ -8,7 +8,7 @@ import {
   toXOnly,
 } from "../../address/bitcoin-address";
 import { BitcoinAddressManager } from "../../address/bitcoin-address-manager";
-import { IBitcoinProvider } from "../../interfaces/bitcoin-provider";
+import type { IBitcoinProvider } from "@meshsdk/provider";
 import {
   AddressPurpose,
   BitcoinAccount,
@@ -22,7 +22,10 @@ import {
 import { RecoveryId } from "../../types/recoveryId";
 import { TransactionsInfo } from "../../types/transactions-info";
 import { UTxO } from "../../types/utxo";
-import { selectUtxosLargestFirst } from "../../utils/coin-selection";
+import {
+  CoinSelectionStrategy,
+  selectUtxosLargestFirst,
+} from "../../utils/coin-selection";
 import { bip32, bip39, bitcoin, ecc, ECPair } from "../core/bitcoin-core";
 
 export interface BitcoinHeadlessWalletConfig {
@@ -30,6 +33,7 @@ export interface BitcoinHeadlessWalletConfig {
   provider?: IBitcoinProvider;
   password?: string;
   account?: number;
+  coinSelection?: CoinSelectionStrategy;
 }
 
 interface InternalConfig {
@@ -39,6 +43,7 @@ interface InternalConfig {
   manager: BitcoinAddressManager;
   provider?: IBitcoinProvider;
   account: number;
+  coinSelection: CoinSelectionStrategy;
 }
 
 /**
@@ -56,6 +61,7 @@ export class BitcoinHeadlessWallet implements IBitcoinWallet {
   protected readonly manager: BitcoinAddressManager;
   protected readonly provider?: IBitcoinProvider;
   protected readonly account: number;
+  protected readonly coinSelection: CoinSelectionStrategy;
 
   protected constructor(cfg: InternalConfig) {
     this.networkName = cfg.network;
@@ -64,6 +70,7 @@ export class BitcoinHeadlessWallet implements IBitcoinWallet {
     this.manager = cfg.manager;
     this.provider = cfg.provider;
     this.account = cfg.account;
+    this.coinSelection = cfg.coinSelection;
   }
 
   /**
@@ -85,6 +92,7 @@ export class BitcoinHeadlessWallet implements IBitcoinWallet {
       manager,
       provider: config.provider,
       account: config.account ?? 0,
+      coinSelection: config.coinSelection ?? selectUtxosLargestFirst,
     });
   }
 
@@ -449,7 +457,7 @@ export class BitcoinHeadlessWallet implements IBitcoinWallet {
     }
 
     const targetAmount = recipients.reduce((sum, r) => sum + r.amount, 0);
-    const { selectedUtxos, change } = selectUtxosLargestFirst(
+    const { selectedUtxos, change } = this.coinSelection(
       utxos,
       targetAmount,
       feeRate,
