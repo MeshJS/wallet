@@ -1,6 +1,6 @@
 {
   "name": "@meshsdk/wallet",
-  "version": "2.0.0-beta.10",
+  "version": "2.0.0-beta.11",
   "description": "Wallets - https://meshjs.dev/apis/wallets",
   "main": "./dist/index.cjs",
   "browser": "./dist/index.js",
@@ -30,7 +30,7 @@
   "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "^4.4.1",
     "@meshsdk/common": "1.9.0-beta.100",
-    "@meshsdk/provider": "1.9.0-beta.99",
+    "@meshsdk/provider": "^1.9.0-beta.102",
     "@types/jest": "^29.5.14",
     "@types/mocha": "^10.0.10",
     "dotenv": "^16.4.5",
@@ -50,6 +50,7 @@
     "@cardano-sdk/crypto": "0.4.4",
     "@cardano-sdk/util": "0.17.1",
     "@harmoniclabs/cbor": "^1.6.6",
+    "@meshsdk/core-cst": "^1.9.1",
     "@simplewebauthn/browser": "^13.0.0",
     "@types/base32-encoding": "^1.0.2",
     "@types/bn.js": "^5.1.5",
